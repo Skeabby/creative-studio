@@ -1,7 +1,7 @@
 {
   "name": "nucleus",
   "version": "0.0.0",
-  "description": "Nucleus is a local-first desktop launcher for creative tools: drop-in apps, one command bus shared by CLI / JSON-RPC / MCP frontends, and native windows powered by WebView2.",
+  "description": "The creative suite that runs itself: one command bus for the GUI, CLI, JSON-RPC and MCP; drop-in apps in native WebView2 windows. No Electron.",
   "license": "MIT",
   "repository": {
     "type": "git",
