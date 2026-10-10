@@ -1,6 +1,6 @@
 [
   {
-    "id": "studio.image-editor",
+    "id": "nucleus.image-editor",
     "name": "Image Editor",
     "description": "Layers, masks, non-destructive adjustments and export.",
     "category": "image",
@@ -9,8 +9,8 @@
     "color": "#5b8cff"
   },
   {
-    "id": "studio.vector",
-    "name": "Vector Studio",
+    "id": "nucleus.vector",
+    "name": "Vector Editor",
     "description": "Bézier paths, shapes and vector export.",
     "category": "vector",
     "inspiredBy": "Illustrator",
@@ -18,8 +18,8 @@
     "color": "#ff9f43"
   },
   {
-    "id": "studio.video",
-    "name": "Video Workshop",
+    "id": "nucleus.video",
+    "name": "Video Editor",
     "description": "Timeline editing, colour and audio mixing.",
     "category": "video",
     "inspiredBy": "Premiere Pro",
@@ -27,8 +27,8 @@
     "color": "#a55eea"
   },
   {
-    "id": "studio.audio",
-    "name": "Audio Workshop",
+    "id": "nucleus.audio",
+    "name": "Audio Editor",
     "description": "Waveform editing, effects chain and mastering.",
     "category": "audio",
     "inspiredBy": "Audition",
@@ -36,7 +36,7 @@
     "color": "#2bcbba"
   },
   {
-    "id": "studio.slides",
+    "id": "nucleus.slides",
     "name": "Slides",
     "description": "Decks with layouts, transitions and present mode.",
     "category": "layout",
@@ -45,7 +45,7 @@
     "color": "#fd9644"
   },
   {
-    "id": "studio.notes",
+    "id": "nucleus.notes",
     "name": "Notes",
     "description": "Markdown notes, notebooks and full-text search.",
     "category": "text",

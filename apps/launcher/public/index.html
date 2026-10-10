@@ -3,35 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Creative Studio</title>
+    <title>Nucleus</title>
+    <link rel="icon" href="/icon.svg" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
     <header class="topbar">
       <div class="brand">
-        <img src="/icon.svg" alt="" width="30" height="30" />
+        <img class="brand-logo" src="/icon.svg" alt="" width="34" height="34" />
         <div class="brand-text">
-          <strong>Creative Studio</strong>
+          <strong>Nucleus</strong>
           <span class="sub" id="count">loading…</span>
         </div>
       </div>
 
       <div class="spacer"></div>
 
-      <input id="search" class="search" type="search" placeholder="Search apps…" autocomplete="off" />
+      <label class="search-wrap">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="search" class="search" type="search" placeholder="Search apps" autocomplete="off" />
+      </label>
 
-      <div class="segmented" role="tablist">
-        <button type="button" data-view="grid" class="active" title="Grid view">▦ Grid</button>
-        <button type="button" data-view="table" title="Table view">☰ Table</button>
+      <div class="segmented" role="tablist" aria-label="View">
+        <button type="button" data-view="grid" class="active" title="Grid view">Grid</button>
+        <button type="button" data-view="table" title="Table view">Table</button>
       </div>
 
       <button type="button" id="theme" class="icon-btn" title="Toggle theme">☾</button>
     </header>
 
-    <main>
-      <div id="grid" class="grid"></div>
+    <main id="main">
+      <section id="grid" class="groups"></section>
 
-      <div id="table-wrap" class="table-wrap" hidden>
+      <section id="table-wrap" class="table-wrap" hidden>
         <table class="table">
           <thead>
             <tr>
@@ -45,9 +51,12 @@
           </thead>
           <tbody id="table-body"></tbody>
         </table>
-      </div>
+      </section>
 
-      <div id="empty" class="empty" hidden>No apps match your search.</div>
+      <div id="empty" class="empty" hidden>
+        <span class="empty-mark">◎</span>
+        <p>No apps match your search.</p>
+      </div>
     </main>
 
     <footer class="status">

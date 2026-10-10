@@ -1,4 +1,4 @@
-// Creative Studio launcher UI.
+// Nucleus launcher UI.
 
 const $ = (sel) => document.querySelector(sel);
 const gridEl = $("#grid");
@@ -12,7 +12,7 @@ const searchEl = $("#search");
 const root = document.documentElement;
 
 let apps = [];
-let view = localStorage.getItem("studio.view") ?? "grid";
+let view = localStorage.getItem("nucleus.view") ?? "grid";
 let query = "";
 const pending = new Set();
 let timer = null;
@@ -23,9 +23,9 @@ const setStatus = (msg) => { statusEl.textContent = msg; };
 function applyTheme(theme) {
   root.dataset.theme = theme;
   $("#theme").textContent = theme === "dark" ? "☾" : "☀";
-  localStorage.setItem("studio.theme", theme);
+  localStorage.setItem("nucleus.theme", theme);
 }
-applyTheme(localStorage.getItem("studio.theme") ?? "dark");
+applyTheme(localStorage.getItem("nucleus.theme") ?? "dark");
 $("#theme").addEventListener("click", () => {
   applyTheme(root.dataset.theme === "dark" ? "light" : "dark");
 });
@@ -33,7 +33,7 @@ $("#theme").addEventListener("click", () => {
 // --- view toggle -----------------------------------------------------------
 function applyView(next) {
   view = next;
-  localStorage.setItem("studio.view", next);
+  localStorage.setItem("nucleus.view", next);
   for (const button of document.querySelectorAll(".segmented button")) {
     button.classList.toggle("active", button.dataset.view === next);
   }
@@ -101,12 +101,27 @@ async function stopApp(app) {
   }
 }
 
-// --- rendering -------------------------------------------------------------
-function statusPill(status) {
+// --- helpers ---------------------------------------------------------------
+function statusPill(status, floating = true) {
   const span = document.createElement("span");
-  span.className = `pill pill-${status}`;
+  span.className = `pill pill-${status}${floating ? "" : " pill-inline"}`;
   span.textContent = status;
   return span;
+}
+
+function iconTile(app, size, withDot = false) {
+  const tile = document.createElement("div");
+  tile.className = `tile tile-${size}${withDot && app.running ? " has-dot" : ""}`;
+  if (app.iconUrl) {
+    const img = document.createElement("img");
+    img.src = app.iconUrl;
+    img.alt = "";
+    tile.appendChild(img);
+  } else {
+    tile.style.background = `linear-gradient(145deg, ${app.color ?? "#7c6bff"}, color-mix(in srgb, ${app.color ?? "#7c6bff"} 55%, #10131c))`;
+    tile.textContent = app.emoji ?? "✨";
+  }
+  return tile;
 }
 
 function actionButton(app) {
@@ -120,7 +135,7 @@ function actionButton(app) {
     return button;
   }
   if (app.status === "planned" || !app.launchable) {
-    button.textContent = "Planned";
+    button.textContent = "Coming soon";
     button.disabled = true;
     return button;
   }
@@ -131,7 +146,6 @@ function actionButton(app) {
   }
   if (app.running) {
     button.textContent = "Open";
-    button.className = "btn";
     button.addEventListener("click", () => openApp(app));
     const stop = document.createElement("button");
     stop.className = "btn subtle";
@@ -149,59 +163,75 @@ function actionButton(app) {
   return button;
 }
 
-function iconTile(app, size) {
-  const tile = document.createElement("div");
-  tile.className = `tile tile-${size}`;
-  if (app.iconUrl) {
-    const img = document.createElement("img");
-    img.src = app.iconUrl;
-    img.alt = "";
-    tile.appendChild(img);
-  } else {
-    tile.style.background = app.color ?? "#5b8cff";
-    tile.textContent = app.emoji ?? "✨";
-  }
-  return tile;
+function groupOf(list) {
+  const ready = list.filter((a) => a.status !== "planned").sort((a, b) => {
+    if (a.self !== b.self) return a.self ? 1 : -1;
+    if (a.running !== b.running) return a.running ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  const planned = list.filter((a) => a.status === "planned").sort((a, b) => a.name.localeCompare(b.name));
+  return [
+    { key: "apps", title: "Apps", items: ready },
+    { key: "soon", title: "Coming soon", items: planned },
+  ].filter((g) => g.items.length > 0);
+}
+
+// --- rendering -------------------------------------------------------------
+function cardFor(app) {
+  const card = document.createElement("article");
+  card.className = "card";
+  if (app.status === "planned") card.classList.add("planned");
+  if (app.running && !app.self) card.classList.add("running");
+
+  const head = document.createElement("div");
+  head.className = "card-head";
+  head.append(iconTile(app, "lg", true));
+  const title = document.createElement("div");
+  title.className = "card-title";
+  const name = document.createElement("strong");
+  name.textContent = app.name;
+  const meta = document.createElement("span");
+  meta.className = "card-meta";
+  meta.textContent = app.version === "—" ? app.category : `v${app.version} · ${app.category}`;
+  title.append(name, meta);
+  head.append(title);
+
+  const description = document.createElement("p");
+  description.className = "card-desc";
+  description.textContent = app.description || "No description yet.";
+
+  const foot = document.createElement("div");
+  foot.className = "card-foot";
+  const inspired = document.createElement("span");
+  inspired.className = "inspired";
+  inspired.textContent = app.inspiredBy ? `like ${app.inspiredBy}` : "";
+  foot.append(inspired, actionButton(app));
+
+  card.append(statusPill(app.status), head, description, foot);
+  return card;
 }
 
 function renderGrid(list) {
   const frag = document.createDocumentFragment();
-  for (const app of list) {
-    const card = document.createElement("article");
-    card.className = "card";
-    if (app.status === "planned") card.classList.add("planned");
-    if (app.running) card.classList.add("running");
+  for (const group of groupOf(list)) {
+    const section = document.createElement("section");
+    section.className = "group";
 
-    const head = document.createElement("div");
-    head.className = "card-head";
-    head.append(iconTile(app, "lg"));
-    const title = document.createElement("div");
-    title.className = "card-title";
-    const name = document.createElement("strong");
-    name.textContent = app.name;
-    const meta = document.createElement("span");
-    meta.className = "card-meta";
-    meta.textContent = app.version === "—" ? app.category : `v${app.version} · ${app.category}`;
-    title.append(name, meta);
-    head.append(title);
-    head.append(statusPill(app.status));
+    const head = document.createElement("header");
+    head.className = "group-head";
+    const h2 = document.createElement("h2");
+    h2.textContent = group.title;
+    const count = document.createElement("span");
+    count.className = "group-count";
+    count.textContent = `${group.items.length}`;
+    head.append(h2, count);
 
-    const description = document.createElement("p");
-    description.className = "card-desc";
-    description.textContent = app.description || "No description yet.";
+    const cards = document.createElement("div");
+    cards.className = "cards";
+    for (const app of group.items) cards.append(cardFor(app));
 
-    const foot = document.createElement("div");
-    foot.className = "card-foot";
-    if (app.inspiredBy) {
-      const inspired = document.createElement("span");
-      inspired.className = "muted";
-      inspired.textContent = `like ${app.inspiredBy}`;
-      foot.append(inspired);
-    }
-    foot.append(actionButton(app));
-
-    card.append(head, description, foot);
-    frag.appendChild(card);
+    section.append(head, cards);
+    frag.append(section);
   }
   gridEl.replaceChildren(frag);
 }
@@ -215,7 +245,7 @@ function renderTable(list) {
     const appCell = document.createElement("td");
     const appWrap = document.createElement("div");
     appWrap.className = "row-app";
-    appWrap.append(iconTile(app, "sm"));
+    appWrap.append(iconTile(app, "sm", true));
     const nameWrap = document.createElement("div");
     const strong = document.createElement("strong");
     strong.textContent = app.name;
@@ -232,7 +262,7 @@ function renderTable(list) {
     category.textContent = app.category;
 
     const statusCell = document.createElement("td");
-    statusCell.append(statusPill(app.status));
+    statusCell.append(statusPill(app.status, false));
 
     const version = document.createElement("td");
     version.textContent = app.version;
@@ -249,10 +279,12 @@ function renderTable(list) {
 
 function render() {
   const list = visibleApps();
+  const ready = apps.filter((a) => a.status !== "planned").length;
+  const planned = apps.filter((a) => a.status === "planned").length;
   const running = apps.filter((a) => a.running && !a.self).length;
 
-  countEl.textContent = `${apps.filter((a) => a.status !== "planned").length} apps · ${apps.filter((a) => a.status === "planned").length} planned`;
-  runningCountEl.textContent = running > 0 ? `${running} running` : "";
+  countEl.textContent = `${ready} apps · ${planned} planned`;
+  runningCountEl.textContent = running > 0 ? `● ${running} running` : "";
   emptyEl.hidden = list.length > 0;
 
   if (view === "grid") renderGrid(list);
@@ -263,6 +295,13 @@ function render() {
 searchEl.addEventListener("input", () => {
   query = searchEl.value;
   render();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "/" && document.activeElement !== searchEl) {
+    event.preventDefault();
+    searchEl.focus();
+  }
 });
 
 applyView(view);
