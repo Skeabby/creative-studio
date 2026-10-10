@@ -1,6 +1,23 @@
 {
   "name": "creative-studio",
   "version": "0.0.0",
+  "description": "A local-first desktop studio for creative tools: a launcher that hosts drop-in apps, one command bus shared by CLI / JSON-RPC / MCP frontends, and native windows powered by WebView2.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Skeabby/creative-studio.git"
+  },
+  "homepage": "https://github.com/Skeabby/creative-studio",
+  "keywords": [
+    "creative-studio",
+    "launcher",
+    "desktop",
+    "webview2",
+    "pdf",
+    "mcp",
+    "monorepo",
+    "typescript"
+  ],
   "private": true,
   "type": "module",
   "packageManager": "npm@11.17.0",

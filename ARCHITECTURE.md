@@ -1,14 +1,14 @@
 # Creative Tools Studio — Architecture & Phased Build Plan
 
-> Status: **Phase 1 built** (2026-10-10). The repo lives on local disk (moved out of OneDrive
-> so `node_modules/` and `.turbo/` never sync).
+> Status: **Phase 1 built** (2026-10-10). Keep the checkout on local disk so `node_modules/`
+> and `.turbo/` never land in a cloud-synced folder.
 > Scope: the *studio itself* — launcher + shared core + unified control layer + MCP — plus **one** proof app.
 
 > **Update (2026-10-10):** Phase 0 scaffolded and verified green — npm workspaces + Turborepo,
 > `@studio/core` command bus with 7 passing tests, and a working `CLI → ControlServer → CommandBus`
-> spine. The repo was **moved out of OneDrive to local disk**: npm deletes a `node_modules` junction
-> on install, so the "junction caches off OneDrive" plan cannot hold — relocating the repo resolves
-> risk #1 outright. Risk #2 (rustup) is deferred until Tauri lands (Phase 4).
+> spine. Build caches must live outside any cloud-synced folder: npm deletes a `node_modules`
+> junction on install, so redirecting caches via a junction is not viable — keeping the checkout on
+> local disk resolves risk #1 outright. Risk #2 (rustup) is deferred until Tauri lands (Phase 4).
 
 > **Update #2 (2026-10-10) — naming + launcher pulled earlier.** The deliverable is **"Creative
 > Studio"**: a personal suite of creative apps in the spirit of ArtCraft Launcher (commercial,
