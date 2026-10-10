@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF Workbench — Creative Studio</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <strong>PDF&nbsp;Workbench</strong>
+        <span class="sub">Creative&nbsp;Studio</span>
+      </div>
+      <div class="actions">
+        <label class="btn primary" for="file-input">+ Add PDFs</label>
+        <input id="file-input" type="file" accept="application/pdf" multiple hidden />
+
+        <span class="divider"></span>
+
+        <button class="btn" id="undo" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
+        <button class="btn" id="redo" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button>
+
+        <span class="divider"></span>
+
+        <button class="btn" id="save" title="Download a .studio.json project">Save</button>
+        <label class="btn" for="project-input" title="Open a saved project">Open</label>
+        <input id="project-input" type="file" accept=".json,application/json" hidden />
+        <button class="btn" id="reset" title="Start over">Reset</button>
+
+        <button class="btn accent" id="export" title="Download the result">Export PDF</button>
+      </div>
+    </header>
+
+    <main id="dropzone">
+      <div id="empty" class="empty">
+        <h1>Your pages, assembled.</h1>
+        <p>Drop PDFs here, or click <b>Add PDFs</b>. Then reorder, rotate, delete, and export.</p>
+        <p class="hint">Drag cards to reorder · Ctrl+Z to undo · everything stays on your machine.</p>
+      </div>
+      <div id="grid" class="grid"></div>
+    </main>
+
+    <footer class="status">
+      <span id="status">Ready</span>
+      <span id="counter"></span>
+    </footer>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

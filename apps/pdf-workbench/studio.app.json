@@ -1,0 +1,22 @@
+{
+  "id": "studio.pdf-workbench",
+  "name": "PDF Workbench",
+  "version": "0.1.0",
+  "coreApiVersion": "1",
+  "description": "Merge, reorder, rotate and export PDF pages.",
+  "author": "Creative Studio",
+  "category": "pdf",
+  "status": "beta",
+  "inspiredBy": "Acrobat",
+  "icon": "icon.svg",
+  "launch": {
+    "kind": "server",
+    "args": ["dist/server.js"],
+    "window": true,
+    "readyPath": "/api/state"
+  },
+  "permissions": ["fs"],
+  "capabilities": ["pdf.edit", "pdf.export"],
+  "minShell": "0.1.0",
+  "updateChannel": "stable"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@studio/pdf-workbench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "dependencies": {
+    "@studio/control": "*",
+    "@studio/core": "*",
+    "@studio/pdf": "*",
+    "pdfjs-dist": "^5.4.149"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/vendor-pdfjs.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js",
+    "dev": "node dist/server.js",
+    "test": "vitest run --passWithNoTests",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  }
+}
