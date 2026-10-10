@@ -1,6 +1,7 @@
 # Creative Tools Studio — Architecture & Phased Build Plan
 
-> Status: **Phase 1 built** (2026-10-10). Repo lives at `C:\Users\<username>\dev\creative-studio` (local disk).
+> Status: **Phase 1 built** (2026-10-10). The repo lives on local disk (moved out of OneDrive
+> so `node_modules/` and `.turbo/` never sync).
 > Scope: the *studio itself* — launcher + shared core + unified control layer + MCP — plus **one** proof app.
 
 > **Update (2026-10-10):** Phase 0 scaffolded and verified green — npm workspaces + Turborepo,
@@ -10,7 +11,7 @@
 > risk #1 outright. Risk #2 (rustup) is deferred until Tauri lands (Phase 4).
 
 > **Update #2 (2026-10-10) — naming + launcher pulled earlier.** The deliverable is **"Creative
-> Studio"**: the author's *own* suite of creative apps in the spirit of ArtCraft Launcher (commercial,
+> Studio"**: a personal suite of creative apps in the spirit of ArtCraft Launcher (commercial,
 > trademarked — own branding, own app set, no catalog cloning). The launcher (Phase 5 in the table
 > below) was **implemented now**, in Node, rather than waiting for Tauri: `apps/launcher` is a
 > windowed app (Edge/Chrome `--app=`) listing apps from `studio.app.json` manifests, with

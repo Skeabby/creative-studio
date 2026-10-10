@@ -84,7 +84,7 @@ curated PDF tools plus a generic `cmd_invoke` escape hatch — see [`.opencode/R
 
 ## Location
 
-This repo lives on **local disk** at `C:\Users\<username>\dev\creative-studio`, moved out of OneDrive
-so `node_modules/` and `.turbo/` never sync (npm deletes a `node_modules` junction on install, so
-redirecting caches via junction is not viable — local disk is). A copy of the design doc stays in
-the private notes vault at `projects/creative-studio/ARCHITECTURE.md`.
+This repo lives on **local disk** (moved out of OneDrive so `node_modules/` and `.turbo/` never
+sync — npm deletes a `node_modules` junction on install, so redirecting caches via a junction is
+not viable). A copy of the design doc is kept in a private notes vault at
+`projects/creative-studio/ARCHITECTURE.md`.
