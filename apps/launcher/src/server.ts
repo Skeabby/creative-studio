@@ -206,7 +206,10 @@ async function serveStatic(res: ServerResponse, pathname: string): Promise<void>
   }
   try {
     const data = await readFile(target);
-    res.writeHead(200, { "content-type": MIME[extname(target)] ?? "application/octet-stream" });
+    res.writeHead(200, {
+      "content-type": MIME[extname(target)] ?? "application/octet-stream",
+      "cache-control": "no-cache",
+    });
     res.end(data);
   } catch {
     res.writeHead(404, { "content-type": "text/plain" });

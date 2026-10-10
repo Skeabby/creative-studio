@@ -40,6 +40,11 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must win over component `display` rules below
+   (e.g. `.overlay { display: flex }` would otherwise keep the palette/drawer
+   overlays visible and block the whole launcher). */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
