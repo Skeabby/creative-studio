@@ -1,13 +1,13 @@
 {
-  "name": "@studio/pdf-workbench",
+  "name": "@nucleus/pdf-workbench",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./dist/server.js",
   "dependencies": {
-    "@studio/control": "*",
-    "@studio/core": "*",
-    "@studio/pdf": "*",
+    "@nucleus/control": "*",
+    "@nucleus/core": "*",
+    "@nucleus/pdf": "*",
     "pdfjs-dist": "^5.4.149"
   },
   "scripts": {

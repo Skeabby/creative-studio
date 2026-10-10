@@ -19,9 +19,9 @@ async function isDirectory(path: string): Promise<boolean> {
   }
 }
 
-/** Loads `<dir>/studio.app.json`, or null when absent/invalid. */
+/** Loads `<dir>/nucleus.app.json`, or null when absent/invalid. */
 export async function loadApp(dir: string, source: string): Promise<DiscoveredApp | null> {
-  const manifestPath = join(dir, "studio.app.json");
+  const manifestPath = join(dir, "nucleus.app.json");
   const result = await loadManifest(manifestPath);
   if (!result.ok) return null;
   return { manifest: result.manifest, dir: resolve(dir), manifestPath, source };

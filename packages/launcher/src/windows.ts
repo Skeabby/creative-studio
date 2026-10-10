@@ -18,8 +18,8 @@ export function detectBrowser(): string | null {
   return null;
 }
 
-export function detectStudioShell(): string | null {
-  const candidate = join(repoRoot(), "assets", "studio-shell.exe");
+export function detectNucleusShell(): string | null {
+  const candidate = join(repoRoot(), "assets", "nucleus-shell.exe");
   return existsSync(candidate) ? candidate : null;
 }
 
@@ -39,14 +39,14 @@ export interface OpenWindowOptions {
 }
 
 /**
- * Opens `url` in its own desktop window. Preferred: the native `studio-shell`
- * (WebView2) when it has been built — every studio app then gets a real window
+ * Opens `url` in its own desktop window. Preferred: the native `nucleus-shell`
+ * (WebView2) when it has been built — every nucleus app then gets a real window
  * with an app icon, no browser chrome. Falls back to an isolated Edge/Chrome
  * `--app=` profile. Returns null when neither is available.
  */
 export function openAppWindow(url: string, options: OpenWindowOptions): AppWindow | null {
-  const shell = detectStudioShell();
-  if (shell) return spawnShell(url, options, shell, join(repoRoot(), "assets", "creative-studio.ico"));
+  const shell = detectNucleusShell();
+  if (shell) return spawnShell(url, options, shell, join(repoRoot(), "assets", "nucleus.ico"));
 
   const browser = detectBrowser();
   if (!browser) return null;
@@ -69,7 +69,7 @@ function spawnShell(
   shellPath: string,
   iconPath: string,
 ): AppWindow {
-  const args = [url, "--title", options.title ?? "Creative Studio"];
+  const args = [url, "--title", options.title ?? "Nucleus"];
   args.push("--user-data-dir", options.profileDir);
   if (options.size) args.push("--size", options.size);
   if (iconPath) args.push("--icon", iconPath);

@@ -1,5 +1,5 @@
 /**
- * @studio/pdf — the PDF Workbench command pack.
+ * @nucleus/pdf — the PDF Workbench command pack.
  *
  * A PDF is modelled as an ordered list of `page` nodes, each pointing at a
  * source PDF (asset) and a source page index, plus a rotation. All edits are
@@ -9,14 +9,14 @@
 import {
   CommandBus,
   createDocument,
-  StudioError,
+  NucleusError,
   type DocumentState,
   type Node,
   type Patch,
-} from "@studio/core";
+} from "@nucleus/core";
 import { degrees, PDFDocument } from "pdf-lib";
 
-export const PDF_APP_ID = "studio.pdf";
+export const PDF_APP_ID = "nucleus.pdf";
 export const PAGE_TYPE = "page";
 
 export interface AssetStore {
@@ -95,7 +95,7 @@ export function registerPdfCommands(bus: CommandBus, assets: AssetStore): void {
     reversible: true,
     run(params, ctx) {
       if (!assets.has(params.sourceId)) {
-        throw new StudioError("not_found", `source not found: ${params.sourceId}`);
+        throw new NucleusError("not_found", `source not found: ${params.sourceId}`);
       }
       const patches: Patch[] = [];
       const ids: string[] = [];
@@ -126,7 +126,7 @@ export function registerPdfCommands(bus: CommandBus, assets: AssetStore): void {
     reversible: true,
     run(params, ctx) {
       const node = ctx.state.nodes[params.id];
-      if (!node) throw new StudioError("not_found", `page not found: ${params.id}`);
+      if (!node) throw new NucleusError("not_found", `page not found: ${params.id}`);
       const current = (node.props.rotation as number) ?? 0;
       const rotation = (((current + params.degrees) % 360) + 360) % 360;
       const after: Node = { ...node, props: { ...node.props, rotation } };
@@ -143,10 +143,10 @@ export function registerPdfCommands(bus: CommandBus, assets: AssetStore): void {
     run(params, ctx) {
       const pages = pageNodes(ctx.state);
       const from = pages.findIndex((p) => p.id === params.id);
-      if (from < 0) throw new StudioError("not_found", `page not found: ${params.id}`);
+      if (from < 0) throw new NucleusError("not_found", `page not found: ${params.id}`);
       const target = Math.max(0, Math.min(params.to, pages.length - 1));
       const [moved] = pages.splice(from, 1);
-      if (!moved) throw new StudioError("internal", "movePage: missing node");
+      if (!moved) throw new NucleusError("internal", "movePage: missing node");
       pages.splice(target, 0, moved);
       const patches: Patch[] = [];
       pages.forEach((node, index) => {
@@ -165,7 +165,7 @@ export function registerPdfCommands(bus: CommandBus, assets: AssetStore): void {
     sideEffects: "destructive",
     reversible: true,
     run(params, ctx) {
-      if (!ctx.state.nodes[params.id]) throw new StudioError("not_found", `page not found: ${params.id}`);
+      if (!ctx.state.nodes[params.id]) throw new NucleusError("not_found", `page not found: ${params.id}`);
       const patches: Patch[] = [{ op: "remove", nodeId: params.id }];
       pageNodes(ctx.state)
         .filter((n) => n.id !== params.id)
@@ -212,14 +212,14 @@ export async function exportPdf(state: DocumentState, assets: AssetStore): Promi
     let source = cache.get(sourceId);
     if (!source) {
       const bytes = assets.get(sourceId);
-      if (!bytes) throw new StudioError("not_found", `source not found: ${sourceId}`);
+      if (!bytes) throw new NucleusError("not_found", `source not found: ${sourceId}`);
       source = await PDFDocument.load(bytes);
       cache.set(sourceId, source);
     }
 
     const copiedPages = await out.copyPages(source, [sourcePage]);
     const copied = copiedPages[0];
-    if (!copied) throw new StudioError("validation", `source page missing: ${sourcePage}`);
+    if (!copied) throw new NucleusError("validation", `source page missing: ${sourcePage}`);
     copied.setRotation(degrees(rotation));
     out.addPage(copied);
   }

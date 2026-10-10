@@ -1,4 +1,4 @@
-# @studio/control-mcp
+# @nucleus/control-mcp
 
 Frontend **#3** of the control layer (Phase 3).
 

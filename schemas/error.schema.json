@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://creative-studio.dev/schemas/error.schema.json",
-  "title": "StudioError",
+  "$id": "https://nucleus.dev/schemas/error.schema.json",
+  "title": "NucleusError",
   "type": "object",
   "required": ["code", "message"],
   "properties": {
-    "code": { "type": "integer", "description": "JSON-RPC code; -32000..-32099 reserved for studio" },
+    "code": { "type": "integer", "description": "JSON-RPC code; -32000..-32099 reserved for nucleus" },
     "message": { "type": "string" },
     "data": {
       "type": "object",

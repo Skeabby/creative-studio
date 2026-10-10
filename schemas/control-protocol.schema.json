@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://creative-studio.dev/schemas/control-protocol.schema.json",
+  "$id": "https://nucleus.dev/schemas/control-protocol.schema.json",
   "title": "ControlProtocolMessage",
   "oneOf": [
     { "$ref": "#/$defs/request" },

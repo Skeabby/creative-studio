@@ -28,7 +28,7 @@ export function parseManifest(value: unknown): ParseResult {
   }
 
   if (typeof value["id"] === "string" && !ID_PATTERN.test(value["id"])) {
-    errors.push(`id must look like "studio.app": got "${value["id"]}"`);
+    errors.push(`id must look like "nucleus.app": got "${value["id"]}"`);
   }
 
   const launch = value["launch"];

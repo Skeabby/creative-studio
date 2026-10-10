@@ -1,12 +1,12 @@
 # opencode integration
 
-`mcp.json` registers the studio MCP server so opencode (and any MCP-capable
+`mcp.json` registers the nucleus MCP server so opencode (and any MCP-capable
 agent) can drive the same command bus as the CLI and the web app.
 
 ```json
 {
   "mcpServers": {
-    "studio": {
+    "nucleus": {
       "type": "local",
       "command": ["node", "packages/control-mcp/dist/index.js"],
       "enabled": true

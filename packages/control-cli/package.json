@@ -1,14 +1,14 @@
 {
-  "name": "@studio/control-cli",
+  "name": "@nucleus/control-cli",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "bin": {
-    "studio": "./dist/index.js"
+    "nucleus": "./dist/index.js"
   },
   "dependencies": {
-    "@studio/control": "*",
-    "@studio/core": "*"
+    "@nucleus/control": "*",
+    "@nucleus/core": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

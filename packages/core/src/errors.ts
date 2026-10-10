@@ -11,7 +11,7 @@ export type ErrorKind =
   | "internal"
   | "cancelled";
 
-/** JSON-RPC codes. -32000..-32099 is reserved for the studio server. */
+/** JSON-RPC codes. -32000..-32099 is reserved for the nucleus server. */
 export const JSON_RPC_CODES: Record<ErrorKind, number> = {
   validation: -32602,
   not_found: -32001,
@@ -22,14 +22,14 @@ export const JSON_RPC_CODES: Record<ErrorKind, number> = {
   internal: -32603,
 };
 
-export class StudioError extends Error {
+export class NucleusError extends Error {
   readonly kind: ErrorKind;
   readonly code: number;
   readonly details: unknown;
 
   constructor(kind: ErrorKind, message: string, details?: unknown) {
     super(message);
-    this.name = "StudioError";
+    this.name = "NucleusError";
     this.kind = kind;
     this.code = JSON_RPC_CODES[kind];
     this.details = details;

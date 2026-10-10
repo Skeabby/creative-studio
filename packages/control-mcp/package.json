@@ -1,15 +1,15 @@
 {
-  "name": "@studio/control-mcp",
+  "name": "@nucleus/control-mcp",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "studio-mcp": "./dist/index.js"
+    "nucleus-mcp": "./dist/index.js"
   },
   "dependencies": {
-    "@studio/core": "*",
-    "@studio/pdf": "*"
+    "@nucleus/core": "*",
+    "@nucleus/pdf": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,5 +1,5 @@
 {
-  "name": "@studio/pdf",
+  "name": "@nucleus/pdf",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@studio/core": "*",
+    "@nucleus/core": "*",
     "pdf-lib": "^1.17.1"
   },
   "scripts": {

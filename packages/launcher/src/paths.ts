@@ -8,20 +8,20 @@ export function repoRoot(): string {
   return fileURLToPath(new URL("../../../", import.meta.url));
 }
 
-/** Per-user studio data: %APPDATA%\CreativeStudio */
-export function studioDataDir(): string {
+/** Per-user nucleus data: %APPDATA%\Nucleus */
+export function nucleusDataDir(): string {
   const base = process.env["APPDATA"] ?? join(homedir(), ".config");
-  return join(base, "CreativeStudio");
+  return join(base, "Nucleus");
 }
 
 /** Isolated browser profile so each app window is its own process. */
 export function windowProfileDir(appId: string): string {
-  const dir = join(studioDataDir(), "window-profiles", appId);
+  const dir = join(nucleusDataDir(), "window-profiles", appId);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
 
 /** Where apps are looked for, in priority order. */
 export function appRoots(): string[] {
-  return [join(repoRoot(), "apps"), join(studioDataDir(), "apps")];
+  return [join(repoRoot(), "apps"), join(nucleusDataDir(), "apps")];
 }

@@ -1,4 +1,4 @@
-import { CommandBus, StudioError, type DocumentState, type ErrorKind } from "@studio/core";
+import { CommandBus, NucleusError, type DocumentState, type ErrorKind } from "@nucleus/core";
 
 /**
  * Transport-agnostic control surface. CLI, JSON-RPC and MCP frontends are all
@@ -45,7 +45,7 @@ export class ControlServer {
 
         case "command.describe": {
           const name = (request.params as { name?: string } | undefined)?.name;
-          if (!name) throw new StudioError("validation", "command.describe requires params.name");
+          if (!name) throw new NucleusError("validation", "command.describe requires params.name");
           const d = this.#bus.describe(name);
           return {
             ok: true,
@@ -61,7 +61,7 @@ export class ControlServer {
 
         case "command.invoke": {
           const { name, params } = (request.params ?? {}) as { name?: string; params?: unknown };
-          if (!name) throw new StudioError("validation", "command.invoke requires params.name");
+          if (!name) throw new NucleusError("validation", "command.invoke requires params.name");
           const result = this.#bus.invoke(name, this.#state, params);
           return { ok: true, result };
         }
@@ -79,14 +79,14 @@ export class ControlServer {
           return { ok: true, result: { redone: this.#bus.redo(this.#state), docVersion: this.#state.docVersion } };
 
         default:
-          throw new StudioError("not_found", `unknown method: ${request.method}`);
+          throw new NucleusError("not_found", `unknown method: ${request.method}`);
       }
     } catch (error) {
-      const studioError =
-        error instanceof StudioError
+      const nucleusError =
+        error instanceof NucleusError
           ? error
-          : new StudioError("internal", error instanceof Error ? error.message : String(error));
-      return { ok: false, error: { kind: studioError.kind, message: studioError.message } };
+          : new NucleusError("internal", error instanceof Error ? error.message : String(error));
+      return { ok: false, error: { kind: nucleusError.kind, message: nucleusError.message } };
     }
   }
 }

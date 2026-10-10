@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @studio/control-mcp — frontend #3 of the control layer.
+ * @nucleus/control-mcp — frontend #3 of the control layer.
  *
  * A *minimal, dependency-free* MCP server (Model Context Protocol is JSON-RPC
  * 2.0 over stdio). It exposes a curated set of tools plus a generic escape
@@ -8,7 +8,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
-import { countPages, createPdfSession, pageViews } from "@studio/pdf";
+import { countPages, createPdfSession, pageViews } from "@nucleus/pdf";
 
 const PROTOCOL_VERSION = "2025-06-18";
 const session = createPdfSession();
@@ -139,7 +139,7 @@ async function handle(message: { id?: unknown; method?: string; params?: Record<
       result: {
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: {} },
-        serverInfo: { name: "studio-pdf-workbench", version: "0.0.0" },
+        serverInfo: { name: "nucleus-pdf-workbench", version: "0.0.0" },
       },
     });
     return;

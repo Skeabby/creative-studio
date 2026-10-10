@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://creative-studio.dev/schemas/command-descriptor.schema.json",
+  "$id": "https://nucleus.dev/schemas/command-descriptor.schema.json",
   "title": "CommandDescriptor",
   "description": "Self-describing command contract. Generated into CLI help, MCP tools and docs.",
   "type": "object",

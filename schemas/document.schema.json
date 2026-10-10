@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://creative-studio.dev/schemas/document.schema.json",
-  "title": "StudioDocument",
+  "$id": "https://nucleus.dev/schemas/document.schema.json",
+  "title": "NucleusDocument",
   "type": "object",
   "required": ["schemaVersion", "appId", "docVersion", "nodes"],
   "properties": {

@@ -1,9 +1,9 @@
-# @studio/control-rpc
+# @nucleus/control-rpc
 
 Frontend **#2** of the control layer (Phase 2).
 
 JSON-RPC 2.0 over local IPC:
-- Windows named pipe `\\.\pipe\creative-studio-<appId>-<pid>` (Node `net`)
+- Windows named pipe `\\.\pipe\nucleus-<appId>-<pid>` (Node `net`)
 - Unix domain socket on other platforms
 - loopback WebSocket for browser / debug tooling
 

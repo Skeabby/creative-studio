@@ -1,5 +1,5 @@
-# Creative Studio - desktop entry point.
-# Runs the launcher (which opens its own window), and shuts the studio down
+# Nucleus - desktop entry point.
+# Runs the launcher (which opens its own window), and shuts the nucleus down
 # again when that window is closed.
 $ErrorActionPreference = "Stop"
 

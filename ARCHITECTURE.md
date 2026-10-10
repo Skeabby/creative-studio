@@ -1,23 +1,23 @@
-# Creative Tools Studio — Architecture & Phased Build Plan
+# Nucleus — Architecture & Phased Build Plan
 
 > Status: **Phase 1 built** (2026-10-10). Keep the checkout on local disk so `node_modules/`
 > and `.turbo/` never land in a cloud-synced folder.
-> Scope: the *studio itself* — launcher + shared core + unified control layer + MCP — plus **one** proof app.
+> Scope: the *nucleus itself* — launcher + shared core + unified control layer + MCP — plus **one** proof app.
 
 > **Update (2026-10-10):** Phase 0 scaffolded and verified green — npm workspaces + Turborepo,
-> `@studio/core` command bus with 7 passing tests, and a working `CLI → ControlServer → CommandBus`
+> `@nucleus/core` command bus with 7 passing tests, and a working `CLI → ControlServer → CommandBus`
 > spine. Build caches must live outside any cloud-synced folder: npm deletes a `node_modules`
 > junction on install, so redirecting caches via a junction is not viable — keeping the checkout on
 > local disk resolves risk #1 outright. Risk #2 (rustup) is deferred until Tauri lands (Phase 4).
 
-> **Update #2 (2026-10-10) — naming + launcher pulled earlier.** The deliverable is **"Creative
-> Studio"**: a personal suite of creative apps in the spirit of ArtCraft Launcher (commercial,
+> **Update #2 (2026-10-10) — naming + launcher pulled earlier.** The deliverable is **"Nucleus"**:
+> a personal suite of creative apps in the spirit of ArtCraft Launcher (commercial,
 > trademarked — own branding, own app set, no catalog cloning). The launcher (Phase 5 in the table
 > below) was **implemented now**, in Node, rather than waiting for Tauri: `apps/launcher` is a
-> windowed app (Edge/Chrome `--app=`) listing apps from `studio.app.json` manifests, with
+> windowed app (Edge/Chrome `--app=`) listing apps from `nucleus.app.json` manifests, with
 > Open/Stop, grid + table views, search and themes. `packages/launcher` owns discovery, manifests,
 > process runtime (free port + readiness probe + process-tree kill), window management and the
-> `creative-studio` CLI. A desktop shortcut makes it launch like a native app. Tauri remains the
+> `nucleus` CLI. A desktop shortcut makes it launch like a native app. Tauri remains the
 > Phase 4 upgrade path for a real always-on shell.
 >
 > Apps now: **PDF Workbench** (real: `packages/pdf` + `apps/pdf-workbench`) plus the launcher
@@ -25,16 +25,23 @@
 > entries in `apps/launcher/roadmap.json`.
 
 > **Update #3 (2026-10-10) — native windows, no browser.** The launcher (and every app window)
-> no longer opens in Edge/Chrome. `shell/studio-shell.cs` is a ~150-line WinForms + **WebView2**
+> no longer opens in Edge/Chrome. `shell/nucleus-shell.cs` is a ~150-line WinForms + **WebView2**
 > host compiled with the .NET Framework `csc.exe` (present on every Windows box — no Visual
-> Studio, no Rust needed) into `assets/studio-shell.exe`. Each app still runs as a local Node
+> Studio, no Rust needed) into `assets/nucleus-shell.exe`. Each app still runs as a local Node
 > HTTP server; `packages/launcher` opens it inside a real native window (taskbar identity,
 > brand icon, no browser chrome), with Chrome/Edge `--app=` as a fallback. WebView2 runtime is
 > preinstalled on Win10/11. Rebuild: `powershell -File scripts\build-shell.ps1` (refetch
 > assemblies with `scripts\fetch-webview2.ps1`). Tauri (Phase 4) remains the path to a packaged
 > installer + tray; the shell already gives us the native-window behaviour today.
 
-**Codename:** `studio` · monorepo root `creative-studio` · packages `@studio/*`
+> **Update #4 (2026-10-10) — renamed to "Nucleus" + launcher redesign.** The project was renamed
+> from "Creative Studio" to **Nucleus** everywhere: the GitHub repo (`Skeabby/nucleus`), npm scope
+> (`@nucleus/*`), CLI (`nucleus`), app ids (`nucleus.*`), manifest file (`nucleus.app.json`), the
+> per-user data dir (`%APPDATA%\Nucleus`) and the native shell (`nucleus-shell.exe`). The launcher
+> UI was redesigned into a premium app-store look: big icon tiles, status + version, sectioned grid
+> (Apps / Coming soon), a prominent Open button, a running dot, and a refined light/dark palette.
+
+**Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---
 
@@ -76,7 +83,7 @@ browser-native already (TS). Heavy modules (RAW, video, GPU compositing) go behi
 ## 2. Repo structure
 
 ```
-creative-studio/
+nucleus/
 ├─ package.json / pnpm-workspace.yaml / turbo.json / tsconfig.base.json
 ├─ .github/workflows/ci.yml          # windows-latest primary
 ├─ .opencode/mcp.json                # register MCP server with opencode
@@ -113,7 +120,7 @@ creative-studio/
 
 ---
 
-## 3. Shared core modules (`@studio/core`)
+## 3. Shared core modules (`@nucleus/core`)
 
 Everything flows through commands; **no direct document mutation anywhere else.**
 
@@ -123,7 +130,7 @@ Everything flows through commands; **no direct document mutation anywhere else.*
 | `model/graph` | node/layer tree; invariants (acyclic, parent exists, dense order) | tree now, DAG refs later |
 | `command` | registry, descriptor lookup, validation, middleware, execution, events | pure handlers `(state, params, ctx) → {patches, events}` |
 | `history` | undo/redo | inverse-patch + snapshot checkpoints; entries tagged `{actor, label, requestId}` |
-| `serialize` | persistence + versioning | `.studio` = ZIP(manifest.json + canonical document.json + content-addressed assets + oplog.jsonl) |
+| `serialize` | persistence + versioning | `.nucleus` = ZIP(manifest.json + canonical document.json + content-addressed assets + oplog.jsonl) |
 | `render` | rendering abstraction | backends `cpu-headless` (mandatory), `canvas2d`, `webgpu`, later `wgpu` |
 | `events` | typed event bus | drives UI, RPC subscriptions, MCP notifications |
 | `assets` | content-addressed store | hash-addressed, dedup, integrity |
@@ -146,8 +153,8 @@ MCP ─┘        │
           CommandBus ─► handlers ─► document + history + events
 ```
 
-- **CLI:** `studio serve`, `studio cmd <name> --json '<params>'`, `studio list|describe`, `studio run <script.oplog>`, `studio render`.
-- **JSON-RPC 2.0 IPC:** Windows named pipe `\\.\pipe\creative-studio-<appId>-<pid>` (Node `net`), Unix socket elsewhere, plus loopback WS for browser/debug. Token file (user-only ACL), loopback-only.
+- **CLI:** `nucleus serve`, `nucleus cmd <name> --json '<params>'`, `nucleus list|describe`, `nucleus run <script.oplog>`, `nucleus render`.
+- **JSON-RPC 2.0 IPC:** Windows named pipe `\\.\pipe\nucleus-<appId>-<pid>` (Node `net`), Unix socket elsewhere, plus loopback WS for browser/debug. Token file (user-only ACL), loopback-only.
 - **MCP:** see §5.
 
 **Command descriptor schema** (`schemas/command-descriptor.schema.json`):
@@ -162,7 +169,7 @@ Document format versioned separately with explicit migrations.
 
 **Error format** (JSON-RPC envelope, stable machine contract in `data`):
 `{ code, message, data: { kind, command, params, details[], retryable,
-expectedDocVersion, actualDocVersion }, id }`. Codes `-32000..-32099` reserved for studio.
+expectedDocVersion, actualDocVersion }, id }`. Codes `-32000..-32099` reserved for nucleus.
 Concurrency conflict → `kind:"conflict"` + versions → agent re-reads and retries (CAS).
 
 **Provenance:** every command carries `actor: { kind: human|agent|system, id, session }` →
@@ -170,7 +177,7 @@ audit, per-actor undo, isolated agent sessions.
 
 ---
 
-## 5. MCP server (`@studio/control-mcp`)
+## 5. MCP server (`@nucleus/control-mcp`)
 
 - **Transport:** stdio (primary — opencode launches it) + **Streamable HTTP** (secondary, loopback by default).
 - **SDK:** official TypeScript MCP SDK now; Rust `rmcp` later only if the core goes native. Keep the adapter thin (tools → `bus.invoke`).
@@ -190,9 +197,9 @@ audit, per-actor undo, isolated agent sessions.
 
 ## 6. Launcher
 
-- **Discovery (priority):** dev `apps/*` (`STUDIO_DEV=1`) → bundled → `%APPDATA%\CreativeStudio\apps\<id>\<version>\` → signed remote catalog.
-- **Manifest `studio.app.json`:** `id`, `name`, `version`, `icon`, entrypoints, **`coreApiVersion`** (ABI major), `protocolRange`, `permissions`, `capabilities`, `minShell`, `updateChannel`, `integrity` (sha256), `signature` (ed25519).
-- **Install/update:** `.studioapp` bundle (ZIP) verified (hash + signature) **before** install; **atomic** stage→verify→move→repoint `current` junction; keep prior version for rollback.
+- **Discovery (priority):** dev `apps/*` (`NUCLEUS_DEV=1`) → bundled → `%APPDATA%\Nucleus\apps\<id>\<version>\` → signed remote catalog.
+- **Manifest `nucleus.app.json`:** `id`, `name`, `version`, `icon`, entrypoints, **`coreApiVersion`** (ABI major), `protocolRange`, `permissions`, `capabilities`, `minShell`, `updateChannel`, `integrity` (sha256), `signature` (ed25519).
+- **Install/update:** `.nucleusapp` bundle (ZIP) verified (hash + signature) **before** install; **atomic** stage→verify→move→repoint `current` junction; keep prior version for rollback.
 - **Core sharing:** launcher ships **one core host**; apps are plugins declaring `coreApiVersion` (major must match). Loader refuses mismatched majors with a clear error.
 
 ---
@@ -220,14 +227,14 @@ Command surface: `pdf.open`, `pdf.split`, `pdf.merge`, `pdf.rotate`, `pdf.reorde
 | **2** | Control layer | `control`, `control-rpc` (pipe+WS+token), `control-cli` | drive every core command from CLI end-to-end | 5–8 d |
 | **3** | MCP | `control-mcp` (TS SDK, stdio+HTTP), curated tools + `cmd_*`, resources; wire into opencode | **opencode builds a PDF via tools**; transcript committed | 4–6 d |
 | **4** | Proof app UI | `apps/pdf-workbench` Tauri v2 shell + minimal UI | native PDF app; **human + agent drive same doc** | 10–15 d |
-| **5** | Launcher | manifest, discovery, `.studioapp` install/update/rollback, signing, multiplexed MCP | launcher installs/runs PDF Workbench + a stub 2nd app | 7–10 d |
+| **5** | Launcher | manifest, discovery, `.nucleusapp` install/update/rollback, signing, multiplexed MCP | launcher installs/runs PDF Workbench + a stub 2nd app | 7–10 d |
 | **6** | Harden + app #2 | image editor proof, WebGPU backend, ABI versioning, perf, public `sdk` | two apps on one core | 15–20 d |
 | **7** | Native core (opt.) | Rust napi/wasm hot modules, `wgpu`, `rmcp`, WASM/browser | measurable hot-path win | 20+ d |
 
-**Phases 0–4 → genuinely usable studio with one solid proof app: ~6–8 weeks.**
+**Phases 0–4 → genuinely usable nucleus with one solid proof app: ~6–8 weeks.**
 
 **Milestone gates:** M1 (end P1) core deterministic/replayable · M2 (end P3) agent authors a doc
-*without a GUI* · M3 (end P4) human+agent co-edit a native app · M4 (end P5) studio becomes a platform.
+*without a GUI* · M3 (end P4) human+agent co-edit a native app · M4 (end P5) nucleus becomes a platform.
 
 ---
 

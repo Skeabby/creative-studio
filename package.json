@@ -1,15 +1,15 @@
 {
-  "name": "creative-studio",
+  "name": "nucleus",
   "version": "0.0.0",
-  "description": "A local-first desktop studio for creative tools: a launcher that hosts drop-in apps, one command bus shared by CLI / JSON-RPC / MCP frontends, and native windows powered by WebView2.",
+  "description": "Nucleus is a local-first desktop launcher for creative tools: drop-in apps, one command bus shared by CLI / JSON-RPC / MCP frontends, and native windows powered by WebView2.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Skeabby/creative-studio.git"
+    "url": "https://github.com/Skeabby/nucleus.git"
   },
-  "homepage": "https://github.com/Skeabby/creative-studio",
+  "homepage": "https://github.com/Skeabby/nucleus",
   "keywords": [
-    "creative-studio",
+    "nucleus",
     "launcher",
     "desktop",
     "webview2",
@@ -35,10 +35,10 @@
     "verify": "turbo run build typecheck test",
     "clean": "turbo run clean",
     "codegen": "node tools/codegen.mjs",
-    "studio": "node packages/launcher/dist/cli.js",
+    "nucleus": "node packages/launcher/dist/cli.js",
     "start": "node packages/launcher/dist/cli.js up",
-    "start:launcher": "npm --workspace @studio/launcher-app run start",
-    "start:pdf": "npm --workspace @studio/pdf-workbench run start",
+    "start:launcher": "npm --workspace @nucleus/launcher-app run start",
+    "start:pdf": "npm --workspace @nucleus/pdf-workbench run start",
     "mcp": "node packages/control-mcp/dist/index.js",
     "shell": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-shell.ps1",
     "shell:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-webview2.ps1",

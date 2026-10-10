@@ -1,6 +1,6 @@
 import type { CommandBus } from "./command.js";
 import type { Node } from "./document.js";
-import { StudioError } from "./errors.js";
+import { NucleusError } from "./errors.js";
 
 export interface CoreCommandOptions {
   /** Injectable id factory (deterministic for tests). */
@@ -46,7 +46,7 @@ export function registerCoreCommands(bus: CommandBus, options: CoreCommandOption
     reversible: true,
     run(params, ctx) {
       const node = ctx.state.nodes[params.id];
-      if (!node) throw new StudioError("not_found", `node not found: ${params.id}`);
+      if (!node) throw new NucleusError("not_found", `node not found: ${params.id}`);
       const after: Node = { ...node, props: { ...node.props, ...params.props } };
       return { patches: [{ op: "update", nodeId: params.id, after }], result: { id: params.id } };
     },
@@ -60,7 +60,7 @@ export function registerCoreCommands(bus: CommandBus, options: CoreCommandOption
     reversible: true,
     run(params, ctx) {
       if (!ctx.state.nodes[params.id]) {
-        throw new StudioError("not_found", `node not found: ${params.id}`);
+        throw new NucleusError("not_found", `node not found: ${params.id}`);
       }
       return { patches: [{ op: "remove", nodeId: params.id }], result: { id: params.id } };
     },

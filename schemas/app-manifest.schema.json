@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://creative-studio.dev/schemas/app-manifest.schema.json",
-  "title": "StudioAppManifest",
+  "$id": "https://nucleus.dev/schemas/app-manifest.schema.json",
+  "title": "NucleusAppManifest",
   "type": "object",
   "required": ["id", "name", "version", "coreApiVersion"],
   "properties": {

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Creative Studio launcher — the window that lists every app in the suite and
+ * Nucleus launcher — the window that lists every app in the suite and
  * starts the ones you click.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AppRuntime, appRoots, discoverApps, type DiscoveredApp } from "@studio/launcher";
+import { AppRuntime, appRoots, discoverApps, type DiscoveredApp } from "@nucleus/launcher";
 
 const PORT = Number(process.env.PORT ?? 4300);
-const LAUNCHER_ID = "studio.launcher";
+const LAUNCHER_ID = "nucleus.launcher";
 const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
 const APP_DIR = fileURLToPath(new URL("..", import.meta.url));
 
@@ -233,5 +233,5 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 server.listen(PORT, "127.0.0.1", () => {
-  process.stdout.write(`Creative Studio launcher running at http://127.0.0.1:${PORT}\n`);
+  process.stdout.write(`Nucleus launcher running at http://127.0.0.1:${PORT}\n`);
 });

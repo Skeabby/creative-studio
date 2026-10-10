@@ -1,11 +1,11 @@
 {
-  "name": "@studio/launcher-app",
+  "name": "@nucleus/launcher-app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./dist/server.js",
   "dependencies": {
-    "@studio/launcher": "*"
+    "@nucleus/launcher": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,18 +1,18 @@
-// studio-shell.exe — the native desktop window for Creative Studio apps.
+// nucleus-shell.exe — the native desktop window for Nucleus apps.
 //
-// A tiny WinForms + WebView2 host: any studio app is just a local URL, so this
+// A tiny WinForms + WebView2 host: any nucleus app is just a local URL, so this
 // shell renders it in a real native window (taskbar identity, app icon, no
 // browser chrome) instead of an Edge/Chrome --app= window.
 //
 // Compile (see scripts/build-shell.ps1):
-//   csc.exe /target:winexe /out:assets\studio-shell.exe ^
+//   csc.exe /target:winexe /out:assets\nucleus-shell.exe ^
 //       /r:System.Windows.Forms.dll /r:System.Drawing.dll ^
 //       /r:assets\webview2\Microsoft.Web.WebView2.Core.dll ^
 //       /r:assets\webview2\Microsoft.Web.WebView2.WinForms.dll ^
-//       shell\studio-shell.cs
+//       shell\nucleus-shell.cs
 //
 // Usage:
-//   studio-shell.exe <url> [--title "Name"] [--icon path.ico]
+//   nucleus-shell.exe <url> [--title "Name"] [--icon path.ico]
 //                    [--user-data-dir dir] [--size 1440x900]
 using System;
 using System.Drawing;
@@ -22,11 +22,11 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace CreativeStudioShell
+namespace NucleusShell
 {
     internal static class Program
     {
-        private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "studio-shell.log");
+        private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "nucleus-shell.log");
 
         internal static void Log(string message)
         {
@@ -43,10 +43,10 @@ namespace CreativeStudioShell
         [STAThread]
         private static void Main(string[] args)
         {
-            Log("studio-shell starting, args: " + string.Join(" ", args));
+            Log("nucleus-shell starting, args: " + string.Join(" ", args));
 
             string url = "";
-            string title = "Creative Studio";
+            string title = "Nucleus";
             string iconPath = "";
             string userDataDir = "";
             int width = 1440;
@@ -87,8 +87,8 @@ namespace CreativeStudioShell
 
             if (string.IsNullOrEmpty(url))
             {
-                MessageBox.Show("usage: studio-shell.exe <url> [--title name] [--icon file.ico]"
-                    + " [--user-data-dir dir] [--size 1440x900]", "studio-shell");
+                MessageBox.Show("usage: nucleus-shell.exe <url> [--title name] [--icon file.ico]"
+                    + " [--user-data-dir dir] [--size 1440x900]", "nucleus-shell");
                 return;
             }
 
@@ -140,6 +140,19 @@ namespace CreativeStudioShell
             _webView = new WebView2 { Dock = DockStyle.Fill };
             _webView.DefaultBackgroundColor = Color.FromArgb(16, 20, 26);
             Controls.Add(_webView);
+
+            FormClosing += delegate(object s, FormClosingEventArgs e)
+            {
+                Program.Log("form closing, reason=" + e.CloseReason);
+            };
+            FormClosed += delegate(object s, FormClosedEventArgs e)
+            {
+                Program.Log("form closed");
+            };
+            Timer heartbeat = new Timer();
+            heartbeat.Interval = 20000;
+            heartbeat.Tick += delegate(object s, EventArgs e) { Program.Log("heartbeat alive"); };
+            heartbeat.Start();
         }
 
         protected override void OnShown(EventArgs e)
@@ -166,6 +179,14 @@ namespace CreativeStudioShell
                 Program.Log("environment ready, EnsureCoreWebView2Async...");
                 await _webView.EnsureCoreWebView2Async(environment);
                 Program.Log("webview ready, navigating to " + _url);
+                _webView.CoreWebView2.ProcessFailed += delegate(object s, CoreWebView2ProcessFailedEventArgs e)
+                {
+                    Program.Log("webview ProcessFailed: " + e.ProcessFailedKind + " reason=" + e.Reason);
+                };
+                _webView.CoreWebView2.NavigationCompleted += delegate(object s, CoreWebView2NavigationCompletedEventArgs e)
+                {
+                    Program.Log("nav completed ok=" + e.IsSuccess + " status=" + e.WebErrorStatus);
+                };
                 _webView.Source = new Uri(_url);
                 _webView.Focus();
             }

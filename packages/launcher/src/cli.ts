@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 /**
- * `creative-studio` — the launcher CLI.
+ * `nucleus` — the launcher CLI.
  *
- *   creative-studio list          show every discovered app
- *   creative-studio open <id>     launch an app and leave it running
- *   creative-studio up            launch the launcher window (this is what the
+ *   nucleus list          show every discovered app
+ *   nucleus open <id>     launch an app and leave it running
+ *   nucleus up            launch the launcher window (this is what the
  *                                 desktop shortcut runs)
- *   creative-studio serve         run the launcher server without a window
+ *   nucleus serve         run the launcher server without a window
  */
 import { discoverApps, type DiscoveredApp } from "./discovery.js";
-import { appRoots, studioDataDir } from "./paths.js";
+import { appRoots, nucleusDataDir } from "./paths.js";
 import { AppRuntime } from "./runtime.js";
 
-export const LAUNCHER_APP_ID = "studio.launcher";
+export const LAUNCHER_APP_ID = "nucleus.launcher";
 
-const HELP = `creative-studio — launcher
+const HELP = `nucleus — launcher
 
 Usage:
-  creative-studio list             List discovered apps
-  creative-studio open <app-id>    Launch an app and leave it running
-  creative-studio up               Open the Creative Studio launcher window
-  creative-studio serve [--port]   Run the launcher server only (no window)
+  nucleus list             List discovered apps
+  nucleus open <app-id>    Launch an app and leave it running
+  nucleus up               Open the Nucleus launcher window
+  nucleus serve [--port]   Run the launcher server only (no window)
 
 App roots:
   ${appRoots().join("\n  ")}
 
 Data:
-  ${studioDataDir()}
+  ${nucleusDataDir()}
 `;
 
 function print(message: string): void {
@@ -37,7 +37,7 @@ async function resolveApp(id: string): Promise<DiscoveredApp> {
   const apps = await discoverApps(appRoots());
   const app = apps.find((candidate) => candidate.manifest.id === id);
   if (!app) {
-    throw new Error(`unknown app "${id}". Run: creative-studio list`);
+    throw new Error(`unknown app "${id}". Run: nucleus list`);
   }
   return app;
 }
@@ -66,7 +66,7 @@ async function main(argv: string[]): Promise<number> {
     case "open": {
       const id = rest[0];
       if (!id) {
-        print("usage: creative-studio open <app-id>");
+        print("usage: nucleus open <app-id>");
         return 2;
       }
       const app = await resolveApp(id);
@@ -78,8 +78,8 @@ async function main(argv: string[]): Promise<number> {
     case "up": {
       const app = await resolveApp(LAUNCHER_APP_ID);
       const running = await runtime.launch(app);
-      print(`Creative Studio is running at ${running.url}`);
-      print("Close the launcher window to shut the studio down.");
+      print(`Nucleus is running at ${running.url}`);
+      print("Close the launcher window to shut the nucleus down.");
       await runtime.waitForClose(LAUNCHER_APP_ID);
       await runtime.stopAll();
       return 0;

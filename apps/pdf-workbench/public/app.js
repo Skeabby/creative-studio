@@ -290,7 +290,7 @@ $("#save").addEventListener("click", () => {
   setStatus("Saving project…");
   const a = document.createElement("a");
   a.href = "/api/project";
-  a.download = "workbench.studio.json";
+  a.download = "workbench.nucleus.json";
   a.click();
 });
 

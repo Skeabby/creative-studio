@@ -8,12 +8,12 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ControlServer } from "@studio/control";
-import { countPages, createPdfSession, exportPdf, pageViews } from "@studio/pdf";
+import { ControlServer } from "@nucleus/control";
+import { countPages, createPdfSession, exportPdf, pageViews } from "@nucleus/pdf";
 
 const PORT = Number(process.env.PORT ?? 5173);
 const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
-const PROJECT_FORMAT = "studio.project";
+const PROJECT_FORMAT = "nucleus.project";
 
 interface Session {
   assets: ReturnType<typeof createPdfSession>["assets"];
@@ -153,7 +153,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     };
     res.writeHead(200, {
       "content-type": "application/json; charset=utf-8",
-      "content-disposition": 'attachment; filename="workbench.studio.json"',
+      "content-disposition": 'attachment; filename="workbench.nucleus.json"',
     });
     res.end(JSON.stringify(project));
     return true;
@@ -162,7 +162,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
   if (url.pathname === "/api/project" && req.method === "POST") {
     const body = await readJson(req);
     if (body.format !== PROJECT_FORMAT) {
-      sendJson(res, 400, { ok: false, error: { kind: "validation", message: "not a studio project file" } });
+      sendJson(res, 400, { ok: false, error: { kind: "validation", message: "not a nucleus project file" } });
       return true;
     }
     const restored = newSession();

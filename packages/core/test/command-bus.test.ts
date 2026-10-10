@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CommandBus, createDocument, registerCoreCommands, StudioError } from "../src/index.js";
+import { CommandBus, createDocument, registerCoreCommands, NucleusError } from "../src/index.js";
 
 function setup() {
   const doc = createDocument("test.app");
@@ -8,7 +8,7 @@ function setup() {
   return { doc, bus };
 }
 
-describe("@studio/core command bus", () => {
+describe("@nucleus/core command bus", () => {
   it("registers and lists commands", () => {
     const { bus } = setup();
     expect(bus.list()).toEqual([
@@ -36,14 +36,14 @@ describe("@studio/core command bus", () => {
     expect(Object.keys(doc.nodes)).toHaveLength(0);
   });
 
-  it("throws a typed StudioError for unknown commands", () => {
+  it("throws a typed NucleusError for unknown commands", () => {
     const { doc, bus } = setup();
     try {
       bus.invoke("nope.nope", doc);
       throw new Error("expected throw");
     } catch (error) {
-      expect(error).toBeInstanceOf(StudioError);
-      expect((error as StudioError).kind).toBe("not_found");
+      expect(error).toBeInstanceOf(NucleusError);
+      expect((error as NucleusError).kind).toBe("not_found");
     }
   });
 

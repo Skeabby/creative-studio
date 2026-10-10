@@ -1,5 +1,5 @@
 # Downloads the WebView2 WinForms interop assemblies from nuget.org into
-# assets\webview2 (used to compile studio-shell.exe).
+# assets\webview2 (used to compile nucleus-shell.exe).
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path -Parent $PSScriptRoot

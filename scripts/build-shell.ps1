@@ -1,5 +1,5 @@
-# Builds assets\studio-shell.exe (WinForms + WebView2 native window) with the
-# .NET Framework compiler - no Visual Studio, no Rust needed.
+# Builds assets\nucleus-shell.exe (WinForms + WebView2 native window) with the
+# .NET Framework compiler - no Visual Nucleus, no Rust needed.
 #
 # The WebView2 interop assemblies must already be in assets\webview2\
 # (download/refresh them with scripts\fetch-webview2.ps1).
@@ -16,11 +16,11 @@ if (-not (Test-Path -LiteralPath (Join-Path $webview "Microsoft.Web.WebView2.Win
 
 New-Item -ItemType Directory -Force -Path (Join-Path $repo "assets") | Out-Null
 
-& $csc /nologo /target:winexe /out:"$repo\assets\studio-shell.exe" `
+& $csc /nologo /target:winexe /out:"$repo\assets\nucleus-shell.exe" `
     "/r:System.Windows.Forms.dll" "/r:System.Drawing.dll" `
     "/r:$webview\Microsoft.Web.WebView2.Core.dll" `
     "/r:$webview\Microsoft.Web.WebView2.WinForms.dll" `
-    "$repo\shell\studio-shell.cs"
+    "$repo\shell\nucleus-shell.cs"
 
 if ($LASTEXITCODE -ne 0) { throw "csc failed with exit code $LASTEXITCODE" }
 
@@ -32,4 +32,4 @@ Copy-Item -LiteralPath (Join-Path $webview "Microsoft.Web.WebView2.WinForms.dll"
 Copy-Item -LiteralPath (Join-Path $webview "WebView2Loader.dll") `
     -Destination (Join-Path $repo "assets\WebView2Loader.dll") -Force
 
-"Built: $repo\assets\studio-shell.exe"
+"Built: $repo\assets\nucleus-shell.exe"

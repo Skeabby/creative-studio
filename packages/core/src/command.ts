@@ -1,5 +1,5 @@
 import type { DocumentState, Node } from "./document.js";
-import { StudioError } from "./errors.js";
+import { NucleusError } from "./errors.js";
 
 export type SideEffects = "read" | "write" | "destructive";
 
@@ -64,7 +64,7 @@ export class CommandBus {
 
   register<P, R>(descriptor: CommandDescriptor<P, R>): void {
     if (this.#handlers.has(descriptor.name)) {
-      throw new StudioError("internal", `duplicate command: ${descriptor.name}`);
+      throw new NucleusError("internal", `duplicate command: ${descriptor.name}`);
     }
     this.#handlers.set(descriptor.name, descriptor as CommandDescriptor<any, any>);
   }
@@ -79,7 +79,7 @@ export class CommandBus {
 
   describe(name: string): CommandDescriptor<any, any> {
     const descriptor = this.#handlers.get(name);
-    if (!descriptor) throw new StudioError("not_found", `unknown command: ${name}`);
+    if (!descriptor) throw new NucleusError("not_found", `unknown command: ${name}`);
     return descriptor;
   }
 

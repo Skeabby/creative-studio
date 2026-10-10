@@ -1,10 +1,10 @@
 {
-  "id": "studio.pdf-workbench",
+  "id": "nucleus.pdf-workbench",
   "name": "PDF Workbench",
   "version": "0.1.0",
   "coreApiVersion": "1",
   "description": "Merge, reorder, rotate and export PDF pages.",
-  "author": "Creative Studio",
+  "author": "Nucleus",
   "category": "pdf",
   "status": "beta",
   "inspiredBy": "Acrobat",

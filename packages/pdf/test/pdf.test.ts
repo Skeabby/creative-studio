@@ -1,4 +1,4 @@
-import { CommandBus, createDocument } from "@studio/core";
+import { CommandBus, createDocument } from "@nucleus/core";
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import {
@@ -22,7 +22,7 @@ async function setupWithSource(pages: number) {
   return session;
 }
 
-describe("@studio/pdf command pack", () => {
+describe("@nucleus/pdf command pack", () => {
   it("imports pages from a source", async () => {
     const { bus, doc } = await setupWithSource(4);
     const res = bus.invoke<{ ids: string[] }>("pdf.importPages", doc, { sourceId: "src-a", pages: [0, 1, 2, 3] });

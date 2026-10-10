@@ -1,24 +1,24 @@
-# Creates the "Creative Studio" desktop shortcut (+ an icon), so the studio
+# Creates the "Nucleus" desktop shortcut (+ an icon), so the nucleus
 # launches like any other Windows app.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\install-shortcut.ps1
 param(
-    [string]$Name = "Creative Studio"
+    [string]$Name = "Nucleus"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path -Parent $PSScriptRoot
 $assets = Join-Path $repo "assets"
-$entry = Join-Path $repo "scripts\creative-studio.ps1"
-$iconPath = Join-Path $assets "creative-studio.ico"
+$entry = Join-Path $repo "scripts\nucleus.ps1"
+$iconPath = Join-Path $assets "nucleus.ico"
 
 if (-not (Test-Path -LiteralPath $entry)) {
     throw "Missing entry script: $entry"
 }
 
 # --- icon ------------------------------------------------------------------
-function New-StudioIcon {
+function New-NucleusIcon {
     param([string]$Path)
 
     Add-Type -AssemblyName System.Drawing
@@ -66,7 +66,7 @@ function New-StudioIcon {
 }
 
 try {
-    New-StudioIcon -Path $iconPath
+    New-NucleusIcon -Path $iconPath
     Write-Host "Icon written: $iconPath"
 } catch {
     Write-Warning "Could not generate icon ($($_.Exception.Message)); the shortcut will use a default icon."
@@ -86,7 +86,7 @@ $shortcut = $shell.CreateShortcut($linkPath)
 $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$entry`""
 $shortcut.WorkingDirectory = $repo
-$shortcut.Description = "Creative Studio - launcher for the studio apps"
+$shortcut.Description = "Nucleus - launcher for the nucleus apps"
 if ($iconPath -and (Test-Path -LiteralPath $iconPath)) {
     $shortcut.IconLocation = "$iconPath,0"
 }
@@ -96,4 +96,4 @@ Write-Host ""
 Write-Host "Shortcut created:"
 Write-Host "  $linkPath"
 Write-Host ""
-Write-Host "Double-click it to open Creative Studio."
+Write-Host "Double-click it to open Nucleus."
