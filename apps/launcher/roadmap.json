@@ -1,0 +1,56 @@
+[
+  {
+    "id": "studio.image-editor",
+    "name": "Image Editor",
+    "description": "Layers, masks, non-destructive adjustments and export.",
+    "category": "image",
+    "inspiredBy": "Photoshop",
+    "emoji": "🖼️",
+    "color": "#5b8cff"
+  },
+  {
+    "id": "studio.vector",
+    "name": "Vector Studio",
+    "description": "Bézier paths, shapes and vector export.",
+    "category": "vector",
+    "inspiredBy": "Illustrator",
+    "emoji": "✒️",
+    "color": "#ff9f43"
+  },
+  {
+    "id": "studio.video",
+    "name": "Video Workshop",
+    "description": "Timeline editing, colour and audio mixing.",
+    "category": "video",
+    "inspiredBy": "Premiere Pro",
+    "emoji": "🎬",
+    "color": "#a55eea"
+  },
+  {
+    "id": "studio.audio",
+    "name": "Audio Workshop",
+    "description": "Waveform editing, effects chain and mastering.",
+    "category": "audio",
+    "inspiredBy": "Audition",
+    "emoji": "🎧",
+    "color": "#2bcbba"
+  },
+  {
+    "id": "studio.slides",
+    "name": "Slides",
+    "description": "Decks with layouts, transitions and present mode.",
+    "category": "layout",
+    "inspiredBy": "PowerPoint",
+    "emoji": "📊",
+    "color": "#fd9644"
+  },
+  {
+    "id": "studio.notes",
+    "name": "Notes",
+    "description": "Markdown notes, notebooks and full-text search.",
+    "category": "text",
+    "inspiredBy": "OneNote",
+    "emoji": "📝",
+    "color": "#26de81"
+  }
+]

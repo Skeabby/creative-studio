@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Creative Studio</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/icon.svg" alt="" width="30" height="30" />
+        <div class="brand-text">
+          <strong>Creative Studio</strong>
+          <span class="sub" id="count">loading…</span>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <input id="search" class="search" type="search" placeholder="Search apps…" autocomplete="off" />
+
+      <div class="segmented" role="tablist">
+        <button type="button" data-view="grid" class="active" title="Grid view">▦ Grid</button>
+        <button type="button" data-view="table" title="Table view">☰ Table</button>
+      </div>
+
+      <button type="button" id="theme" class="icon-btn" title="Toggle theme">☾</button>
+    </header>
+
+    <main>
+      <div id="grid" class="grid"></div>
+
+      <div id="table-wrap" class="table-wrap" hidden>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>App</th>
+              <th>Inspired by</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Version</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+
+      <div id="empty" class="empty" hidden>No apps match your search.</div>
+    </main>
+
+    <footer class="status">
+      <span id="status">Ready</span>
+      <span id="running-count"></span>
+    </footer>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

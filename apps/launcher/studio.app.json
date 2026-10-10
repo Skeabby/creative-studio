@@ -1,0 +1,23 @@
+{
+  "id": "studio.launcher",
+  "name": "Creative Studio",
+  "version": "0.1.0",
+  "coreApiVersion": "1",
+  "description": "One window for every app in the studio: install, open and update them.",
+  "author": "Creative Studio",
+  "category": "system",
+  "status": "alpha",
+  "inspiredBy": "ArtCraft Launcher",
+  "icon": "icon.svg",
+  "launch": {
+    "kind": "server",
+    "args": ["dist/server.js"],
+    "port": 4300,
+    "window": true,
+    "readyPath": "/api/health"
+  },
+  "permissions": [],
+  "capabilities": ["app.launch", "app.discover"],
+  "minShell": "0.1.0",
+  "updateChannel": "stable"
+}
