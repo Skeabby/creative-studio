@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creative-studio.dev/schemas/document.schema.json",
+  "title": "StudioDocument",
+  "type": "object",
+  "required": ["schemaVersion", "appId", "docVersion", "nodes"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "appId": { "type": "string" },
+    "docVersion": { "type": "integer", "minimum": 0 },
+    "selection": { "type": "array", "items": { "type": "string" } },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "order"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "parentId": { "type": ["string", "null"] },
+        "order": { "type": "integer", "minimum": 0 },
+        "enabled": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "props": { "type": "object" }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@studio/control-mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "studio-mcp": "./dist/index.js"
+  },
+  "dependencies": {
+    "@studio/core": "*",
+    "@studio/pdf": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  }
+}

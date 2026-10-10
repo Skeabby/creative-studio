@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "studio": {
+      "type": "local",
+      "command": ["node", "packages/control-mcp/dist/index.js"],
+      "enabled": true
+    }
+  }
+}

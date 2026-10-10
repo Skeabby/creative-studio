@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creative-studio.dev/schemas/app-manifest.schema.json",
+  "title": "StudioAppManifest",
+  "type": "object",
+  "required": ["id", "name", "version", "coreApiVersion"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "author": { "type": "string" },
+    "category": {
+      "enum": ["image", "vector", "video", "audio", "pdf", "text", "layout", "data", "cad", "system", "other"]
+    },
+    "status": { "enum": ["stable", "beta", "alpha", "planned"] },
+    "inspiredBy": { "type": "string", "description": "Familiar tool this app plays the role of" },
+    "icon": { "type": "string", "description": "Icon file path, relative to the app directory" },
+    "entry": { "type": "string" },
+    "protocolEntry": { "type": "string" },
+    "mcpEntry": { "type": "string" },
+    "launch": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["server", "url", "command"] },
+        "command": { "type": "string", "description": "Executable to run (defaults to node)" },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "url": { "type": "string" },
+        "port": { "type": "integer", "description": "Preferred port; 0/absent = pick a free one" },
+        "window": { "type": "boolean", "description": "Open a dedicated app window (default true)" },
+        "readyPath": { "type": "string", "description": "Path polled to detect the server is up (default /)" }
+      }
+    },
+    "coreApiVersion": { "type": "string", "description": "ABI major the app requires" },
+    "protocolRange": { "type": "string" },
+    "permissions": {
+      "type": "array",
+      "items": { "enum": ["fs", "network", "ai", "clipboard"] }
+    },
+    "capabilities": { "type": "array", "items": { "type": "string" } },
+    "minShell": { "type": "string" },
+    "updateChannel": { "enum": ["stable", "beta"] },
+    "integrity": { "type": "string", "description": "sha256 of the bundle" },
+    "signature": { "type": "string", "description": "ed25519 over manifest + hash" }
+  }
+}

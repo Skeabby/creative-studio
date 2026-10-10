@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creative-studio.dev/schemas/command-descriptor.schema.json",
+  "title": "CommandDescriptor",
+  "description": "Self-describing command contract. Generated into CLI help, MCP tools and docs.",
+  "type": "object",
+  "required": ["name", "title", "description", "sideEffects"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)+$",
+      "description": "Dotted, namespaced command id, e.g. doc.addNode"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "params": { "type": "object", "description": "JSON Schema for the params object" },
+    "result": { "type": "object", "description": "JSON Schema for the structured result" },
+    "examples": { "type": "array", "items": { "type": "object" } },
+    "sideEffects": { "enum": ["read", "write", "destructive"] },
+    "reversible": { "type": "boolean" },
+    "requires": { "type": "array", "items": { "type": "string" } },
+    "since": { "type": "string" },
+    "deprecatedIn": { "type": "string" },
+    "removedIn": { "type": "string" },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expose": { "type": "boolean" },
+        "toolName": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$" },
+        "readOnlyHint": { "type": "boolean" },
+        "destructiveHint": { "type": "boolean" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "type": "string" },
+        "confirm": { "type": "boolean" }
+      }
+    }
+  }
+}

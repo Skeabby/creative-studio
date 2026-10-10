@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creative-studio.dev/schemas/error.schema.json",
+  "title": "StudioError",
+  "type": "object",
+  "required": ["code", "message"],
+  "properties": {
+    "code": { "type": "integer", "description": "JSON-RPC code; -32000..-32099 reserved for studio" },
+    "message": { "type": "string" },
+    "data": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": ["validation", "not_found", "conflict", "unauthorized", "unsupported", "internal", "cancelled"]
+        },
+        "command": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "expectedDocVersion": { "type": "integer" },
+        "actualDocVersion": { "type": "integer" },
+        "details": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  }
+}
