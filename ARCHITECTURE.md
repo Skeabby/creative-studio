@@ -41,6 +41,16 @@
 > UI was redesigned into a premium app-store look: big icon tiles, status + version, sectioned grid
 > (Apps / Coming soon), a prominent Open button, a running dot, and a refined light/dark palette.
 
+> **Update #5 (2026-10-10) — launcher UX, tier 1.** The launcher grew the features that make it feel
+> like a real app store: cards are grouped **by category** (Image & Design / Media / Documents /
+> System), the table is **sortable** on every column (7 columns incl. inspired-by and source),
+> **arrow keys** move a selection and Enter opens, **Ctrl+K** opens a **command palette** that also
+> lists each app's command-bus capabilities, and clicking a card opens a **detail drawer** showing
+> description, capabilities/permissions chips and the exact `npm run nucleus -- open <id>` command.
+> `/api/apps` now also returns `author`, `capabilities`, `permissions`, `source` and `dir`.
+> `tools/screenshot.mjs`'s DOM self-check was updated and a second hero (`docs/screenshot-table.png`)
+> is captured. Assets (logo, wordmark, app icons) are still pending.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---

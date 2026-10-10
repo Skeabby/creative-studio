@@ -14,7 +14,9 @@
 [![Stars](https://img.shields.io/github/stars/Skeabby/nucleus?style=social)](https://github.com/Skeabby/nucleus/stargazers)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Skeabby/nucleus/pulls)
 
-<img src="docs/screenshot-launcher.png" alt="The Nucleus launcher" width="820" />
+<img src="docs/screenshot-launcher.png" alt="The Nucleus launcher, grid view grouped by category" width="820" />
+<br />
+<img src="docs/screenshot-table.png" alt="The Nucleus launcher, sortable table view" width="820" />
 
 </div>
 
@@ -43,14 +45,15 @@ different route:
   window with taskbar identity and its own icon — compiled with the `csc.exe` already on Windows.
 - **One core to rule the suite.** `@nucleus/core` owns the document model, a command bus and
   undo/redo. Frontends are thin adapters, so features land once and become available everywhere.
-- **A launcher that looks the part.** An app-store grid: big icons, status and version, sectioned
-  Apps / Coming soon, a prominent Open button, search, grid/table views and light/dark themes.
+- **A launcher that looks the part.** An app-store view: big icons, status and version, grouped by
+  category, a sortable table, a **Ctrl+K command palette**, an app detail panel that lists each
+  app's commands, and light/dark themes.
 
 ## Apps
 
 | App | Status | What it does |
 |-----|--------|--------------|
-| **Nucleus launcher** | alpha | Every app in one window: search, grid/table, Open / Stop, themes. |
+| **Nucleus launcher** | alpha | Every app in one window: search, category groups, sortable table, Ctrl+K palette, detail panel, Open / Stop, themes. |
 | **PDF Workbench** | beta | Merge, reorder, rotate, delete pages, undo/redo, save/open projects, export. |
 | Image Editor | planned | Layers, masks, non-destructive adjustments and export. |
 | Vector Editor | planned | Bézier paths, shapes and vector export. |

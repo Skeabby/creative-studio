@@ -85,10 +85,12 @@ async function main() {
     returnByValue: true,
     expression: `JSON.stringify({
       title: document.title,
-      appCards: document.querySelectorAll('.app-card').length,
+      cards: document.querySelectorAll('.card, .app-card').length,
+      rows: document.querySelectorAll('tbody tr').length,
+      groups: document.querySelectorAll('.group').length,
       largeTiles: document.querySelectorAll('.tile-lg').length,
-      groupSections: document.querySelectorAll('[data-group], .group, section').length,
-      buttons: document.querySelectorAll('button').length,
+      palette: !!document.querySelector('#palette'),
+      drawer: !!document.querySelector('#drawer'),
       textLen: (document.body.innerText || '').length
     })`,
   });
@@ -96,7 +98,7 @@ async function main() {
   console.log("dom:", stats);
   try {
     const parsed = JSON.parse(stats ?? "{}");
-    if (!parsed.appCards && !parsed.largeTiles) {
+    if (!parsed.cards && !parsed.rows && !parsed.largeTiles) {
       console.warn("WARNING: page rendered no app cards — screenshot may look empty");
     }
   } catch {

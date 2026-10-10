@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
     <title>Nucleus</title>
     <link rel="icon" href="/icon.svg" />
     <link rel="stylesheet" href="/style.css" />
@@ -20,6 +21,11 @@
       </div>
 
       <div class="spacer"></div>
+
+      <button type="button" id="cmd" class="cmd-btn" title="Command palette (Ctrl+K)">
+        <span class="cmd-keys"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        <span class="cmd-label">Commands</span>
+      </button>
 
       <label class="search-wrap">
         <span class="search-icon" aria-hidden="true">⌕</span>
@@ -41,11 +47,12 @@
         <table class="table">
           <thead>
             <tr>
-              <th>App</th>
-              <th>Inspired by</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Version</th>
+              <th data-sort="name" class="sortable">App</th>
+              <th data-sort="inspiredBy" class="sortable">Inspired by</th>
+              <th data-sort="category" class="sortable">Category</th>
+              <th data-sort="status" class="sortable">Status</th>
+              <th data-sort="version" class="sortable">Version</th>
+              <th data-sort="source" class="sortable">Source</th>
               <th class="right">Action</th>
             </tr>
           </thead>
@@ -55,14 +62,39 @@
 
       <div id="empty" class="empty" hidden>
         <span class="empty-mark">◎</span>
-        <p>No apps match your search.</p>
+        <p id="empty-text">No apps match your search.</p>
       </div>
     </main>
 
     <footer class="status">
       <span id="status">Ready</span>
-      <span id="running-count"></span>
+      <span class="status-right">
+        <span id="planned-count"></span>
+        <span id="running-count"></span>
+        <span class="hint"><kbd>Ctrl</kbd><kbd>K</kbd> commands · <kbd>/</kbd> search</span>
+      </span>
     </footer>
+
+    <!-- Command palette -->
+    <div id="palette" class="overlay" hidden>
+      <div class="palette-panel" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="palette-input-wrap">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="palette-input" class="palette-input" placeholder="Run a command, app, or action…" autocomplete="off" />
+          <kbd>Esc</kbd>
+        </div>
+        <ul id="palette-list" class="palette-list"></ul>
+        <div class="palette-foot">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>Enter</kbd> run</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- App detail drawer -->
+    <div id="drawer" class="overlay drawer-overlay" hidden>
+      <div id="drawer-panel" class="drawer-panel" role="dialog" aria-modal="true" aria-label="App details"></div>
+    </div>
 
     <script type="module" src="/app.js"></script>
   </body>
