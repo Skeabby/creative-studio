@@ -12,7 +12,7 @@
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](#)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-43853D.svg)](https://nodejs.org)
 [![Stars](https://img.shields.io/github/stars/Skeabby/nucleus?style=social)](https://github.com/Skeabby/nucleus/stargazers)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](../../pulls)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Skeabby/nucleus/pulls)
 
 <img src="docs/screenshot-launcher.png" alt="The Nucleus launcher" width="820" />
 
