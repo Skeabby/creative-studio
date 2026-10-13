@@ -18,51 +18,68 @@ if (-not (Test-Path -LiteralPath $entry)) {
 }
 
 # --- icon ------------------------------------------------------------------
+# Builds a multi-size .ico from the brand logo (docs/brand/logo.png) so the
+# launcher carries the on-brand INK-tile mark in the taskbar and shortcuts.
 function New-NucleusIcon {
     param([string]$Path)
 
     Add-Type -AssemblyName System.Drawing
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
 
-    $size = 256
-    $bmp = New-Object System.Drawing.Bitmap($size, $size)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.Clear([System.Drawing.Color]::Transparent)
+    $logo = Join-Path $repo "docs\brand\logo.png"
+    if (-not (Test-Path -LiteralPath $logo)) {
+        throw "Missing brand logo for icon generation: $logo"
+    }
 
-    $rect = New-Object System.Drawing.Rectangle(8, 8, ($size - 16), ($size - 16))
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
-        $rect,
-        [System.Drawing.Color]::FromArgb(255, 122, 162, 255),
-        [System.Drawing.Color]::FromArgb(255, 63, 99, 255),
-        45.0)
-    $rounded = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $r = 58
-    $rounded.AddArc(8, 8, $r, $r, 180, 90)
-    $rounded.AddArc(($size - 8 - $r), 8, $r, $r, 270, 90)
-    $rounded.AddArc(($size - 8 - $r), ($size - 8 - $r), $r, $r, 0, 90)
-    $rounded.AddArc(8, ($size - 8 - $r), $r, $r, 90, 90)
-    $rounded.CloseFigure()
-    $g.FillPath($brush, $rounded)
+    $src = [System.Drawing.Image]::FromFile($logo)
 
-    $white = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 255, 255, 255))
-    $faint = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(150, 255, 255, 255))
-    $ghost = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(90, 255, 255, 255))
+    # Frames are stored as PNG inside the ICO (supported since Vista).
+    $sizes = 256, 64, 48, 32, 16
+    $pngs = @()
+    foreach ($s in $sizes) {
+        $bmp = New-Object System.Drawing.Bitmap($s, $s)
+        $g = [System.Drawing.Graphics]::FromImage($bmp)
+        $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+        $g.DrawImage($src, 0, 0, $s, $s)
+        $g.Dispose()
+        $ms = New-Object System.IO.MemoryStream
+        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $pngs += , $ms.ToArray()
+        $ms.Dispose()
+        $bmp.Dispose()
+    }
+    $src.Dispose()
 
-    $g.FillRectangle($white, 66, 66, 56, 56)
-    $g.FillRectangle($faint, 138, 66, 56, 56)
-    $g.FillRectangle($faint, 66, 138, 56, 56)
-    $g.FillRectangle($ghost, 138, 138, 56, 56)
+    $count = $pngs.Count
+    $offset = 6 + 16 * $count
+    $out = New-Object System.IO.MemoryStream
+    $bw = New-Object System.IO.BinaryWriter($out)
 
-    $g.Dispose()
+    # ICO header: reserved=0, type=1 (icon), count.
+    $bw.Write([UInt16]0)
+    $bw.Write([UInt16]1)
+    $bw.Write([UInt16]$count)
 
-    $handle = $bmp.GetHicon()
-    $icon = [System.Drawing.Icon]::FromHandle($handle)
-    $stream = [System.IO.File]::Create($Path)
-    $icon.Save($stream)
-    $stream.Close()
-    $icon.Dispose()
-    $bmp.Dispose()
+    for ($i = 0; $i -lt $count; $i++) {
+        $s = $sizes[$i]
+        $dim = if ($s -ge 256) { 0 } else { $s }
+        $bw.Write([Byte]$dim)     # width  (0 means 256)
+        $bw.Write([Byte]$dim)     # height
+        $bw.Write([Byte]0)        # color count
+        $bw.Write([Byte]0)        # reserved
+        $bw.Write([UInt16]1)      # color planes
+        $bw.Write([UInt16]32)     # bits per pixel
+        $bw.Write([UInt32]$pngs[$i].Length)
+        $bw.Write([UInt32]$offset)
+        $offset += $pngs[$i].Length
+    }
+    foreach ($frame in $pngs) { $bw.Write($frame) }
+    $bw.Flush()
+    [System.IO.File]::WriteAllBytes($Path, $out.ToArray())
+    $bw.Dispose()
+    $out.Dispose()
 }
 
 try {
