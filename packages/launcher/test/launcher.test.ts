@@ -1,8 +1,8 @@
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+﻿import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { discoverApps, findFreePort, parseManifest, launchSpecDefaults } from "../src/index.js";
+import { discoverApps, findFreePort, mergeRoadmap, parseManifest, launchSpecDefaults } from "../src/index.js";
 
 const valid = {
   id: "nucleus.demo",
@@ -114,5 +114,32 @@ describe("port allocation", () => {
     const first = await findFreePort();
     const second = await findFreePort(first);
     expect(second).toBeGreaterThan(0);
+  });
+});
+
+describe("roadmap merge", () => {
+  const entries = [
+    { id: "nucleus.pdf-workbench", name: "PDF Workbench" },
+    { id: "nucleus.notes", name: "Notes" },
+    { id: "nucleus.slides", name: "Slides" },
+  ];
+
+  it("keeps every roadmap entry when nothing is discovered yet", () => {
+    expect(mergeRoadmap(new Set(), entries)).toHaveLength(3);
+  });
+
+  it("drops a discovered app from the roadmap (no double listing)", () => {
+    const planned = mergeRoadmap(new Set(["nucleus.notes"]), entries);
+    expect(planned.map((e) => e.id)).toEqual(["nucleus.pdf-workbench", "nucleus.slides"]);
+  });
+
+  it("is unaffected by ids that are not in the roadmap", () => {
+    const planned = mergeRoadmap(new Set(["nucleus.mystery"]), entries);
+    expect(planned).toHaveLength(3);
+  });
+
+  it("keeps entry order for remaining apps", () => {
+    const planned = mergeRoadmap(new Set(["nucleus.pdf-workbench", "nucleus.slides"]), entries);
+    expect(planned.map((e) => e.id)).toEqual(["nucleus.notes"]);
   });
 });

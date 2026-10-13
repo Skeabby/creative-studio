@@ -7,7 +7,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AppRuntime, appRoots, discoverApps, type DiscoveredApp } from "@nucleus/launcher";
+import { AppRuntime, appRoots, discoverApps, mergeRoadmap, type DiscoveredApp, type RoadmapEntry } from "@nucleus/launcher";
 
 const PORT = Number(process.env.PORT ?? 4300);
 const LAUNCHER_ID = "nucleus.launcher";
@@ -28,16 +28,6 @@ const MIME: Record<string, string> = {
   ".json": "application/json; charset=utf-8",
   ".ico": "image/x-icon",
 };
-
-interface RoadmapEntry {
-  id: string;
-  name: string;
-  description?: string;
-  category?: string;
-  inspiredBy?: string;
-  emoji?: string;
-  color?: string;
-}
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -96,7 +86,8 @@ async function listApps(): Promise<unknown[]> {
     };
   });
 
-  const planned = (await loadRoadmap()).map((entry) => ({
+  // A discovered app replaces its roadmap card, so the same id never lists twice.
+  const planned = mergeRoadmap(new Set(real.map((app) => app.id)), await loadRoadmap()).map((entry) => ({
     id: entry.id,
     name: entry.name,
     version: "—",
