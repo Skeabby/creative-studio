@@ -1,0 +1,22 @@
+{
+  "id": "nucleus.notes",
+  "name": "Notes",
+  "version": "0.1.0",
+  "coreApiVersion": "1",
+  "description": "Markdown notes, notebooks and full-text search.",
+  "author": "Nucleus",
+  "category": "text",
+  "status": "alpha",
+  "inspiredBy": "OneNote",
+  "icon": "icon.svg",
+  "launch": {
+    "kind": "server",
+    "args": ["dist/server.js"],
+    "window": true,
+    "readyPath": "/api/state"
+  },
+  "permissions": ["fs"],
+  "capabilities": ["notes.edit", "notes.search"],
+  "minShell": "0.1.0",
+  "updateChannel": "stable"
+}

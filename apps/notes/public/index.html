@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notes — Nucleus</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+
+    <div class="layout">
+
+      <!-- ── Sidebar ─────────────────────────────────────────── -->
+      <aside class="sidebar">
+        <header class="sidebar-header">
+          <div class="brand">
+            <span class="dot"></span>
+            <strong>Notes</strong>
+            <span class="sub">Nucleus</span>
+          </div>
+          <button class="btn-new" id="new-note" title="New note (Ctrl+N)">+</button>
+        </header>
+
+        <div class="search-wrap">
+          <input
+            class="search"
+            id="search"
+            type="search"
+            placeholder="Search notes…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <ul class="note-list" id="note-list">
+          <!-- filled by app.js -->
+        </ul>
+
+        <footer class="sidebar-footer">
+          <span id="note-count">0 notes</span>
+          <div class="sidebar-actions">
+            <button class="btn-sm" id="save-project" title="Save project">Save</button>
+            <label class="btn-sm" for="project-input" title="Open project">Open</label>
+            <input id="project-input" type="file" accept=".json,application/json" hidden />
+          </div>
+        </footer>
+      </aside>
+
+      <!-- ── Editor panel ─────────────────────────────────────── -->
+      <div class="editor-panel">
+
+        <header class="topbar">
+          <input
+            class="title-input"
+            id="title-input"
+            type="text"
+            placeholder="Note title"
+            spellcheck="true"
+          />
+          <div class="topbar-actions">
+            <button class="btn" id="undo" title="Undo (Ctrl+Z)" disabled>↶</button>
+            <button class="btn" id="redo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+            <span class="divider"></span>
+            <button class="btn" id="toggle-preview" title="Toggle preview (Ctrl+P)">Preview</button>
+            <button class="btn accent" id="export" title="Export all notes as Markdown">Export</button>
+            <button class="btn danger" id="delete-note" title="Delete this note" hidden>Delete</button>
+          </div>
+        </header>
+
+        <div class="editor-body">
+          <div class="empty-state" id="empty-state">
+            <h1>Your thoughts, written.</h1>
+            <p>Create a note with <kbd>Ctrl+N</kbd> or click <b>+</b> in the sidebar.</p>
+            <p class="hint">Markdown supported · Auto-saves as you type · Stays on your machine.</p>
+          </div>
+          <textarea
+            class="editor"
+            id="editor"
+            placeholder="Write in Markdown…"
+            spellcheck="true"
+            hidden
+          ></textarea>
+          <div class="preview" id="preview" hidden></div>
+        </div>
+
+        <footer class="status">
+          <span id="status">Ready</span>
+          <span id="word-count"></span>
+        </footer>
+
+      </div>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
