@@ -1,17 +1,18 @@
 //! The eframe application: owns the discovery, the runtime, the event channel
-//! and the egui layout.
+//! and the craft-launcher-style egui layout.
 
 use std::collections::VecDeque;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-use egui::{CentralPanel, Margin, RichText, SidePanel, TopBottomPanel};
+use egui::{CentralPanel, Margin, RichText, TopBottomPanel};
 
 use nucleus_launcher_core::derive_status;
 
 use crate::discovery::Discovery;
 use crate::runtime::{Event, Runtime};
-use crate::ui::{Action, Counts, Facts, Filter};
+use crate::ui::icons::IconStore;
+use crate::ui::{Action, Counts, Facts, NodeFact, Palette, SortKey, View, configure_theme};
 
 /// The Nucleus launcher app window.
 pub struct LauncherApp {
@@ -19,8 +20,11 @@ pub struct LauncherApp {
     runtime: Runtime,
     events: Receiver<Event>,
     log: VecDeque<String>,
-    selected: Option<String>,
-    filter: Filter,
+    search: String,
+    view: View,
+    dark: bool,
+    sort: (SortKey, bool),
+    icons: IconStore,
     facts: Facts,
 }
 
@@ -28,19 +32,24 @@ const LOG_CAP: usize = 40;
 
 impl LauncherApp {
     pub fn new(
-        _cc: &eframe::CreationContext<'_>,
+        cc: &eframe::CreationContext<'_>,
         discovery: Discovery,
         runtime: Runtime,
         events: Receiver<Event>,
         facts: Facts,
     ) -> Self {
+        crate::ui::install_fonts(&cc.egui_ctx);
+        configure_theme(&cc.egui_ctx, &Palette::dark());
         Self {
             discovery,
             runtime,
             events,
             log: VecDeque::new(),
-            selected: None,
-            filter: Filter::All,
+            search: String::new(),
+            view: View::Grid,
+            dark: true,
+            sort: (SortKey::Name, true),
+            icons: IconStore::new(),
             facts,
         }
     }
@@ -59,6 +68,7 @@ impl LauncherApp {
             all,
             installed,
             upcoming: self.discovery.planned_count(),
+            running: self.runtime.running_count(),
         }
     }
 
@@ -115,82 +125,105 @@ impl eframe::App for LauncherApp {
             ctx.request_repaint_after(Duration::from_millis(250));
         }
 
+        // Apply the theme (stateless) then draw with the same palette.
+        let palette = if self.dark {
+            Palette::dark()
+        } else {
+            Palette::light()
+        };
+        configure_theme(ctx, &palette);
+
         let counts = self.counts();
         let mut actions: Vec<(String, Action)> = Vec::new();
-        let mut selected = self.selected.clone();
+        let border = palette.border;
 
-        // Sidebar (left).
-        SidePanel::left("sidebar")
-            .resizable(false)
-            .exact_width(240.0)
+        // Header (top).
+        TopBottomPanel::top("header")
+            .exact_height(52.0)
             .frame(
                 egui::Frame::side_top_panel(&ctx.style())
-                    .fill(crate::ui::theme::INK)
-                    .inner_margin(Margin::same(14)),
+                    .fill(palette.bg)
+                    .inner_margin(Margin::symmetric(16, 10))
+                    .stroke(egui::Stroke::new(1.0_f32, border)),
             )
             .show(ctx, |ui| {
-                crate::ui::views::sidebar(ui, &mut self.filter, counts, &self.facts);
+                crate::ui::views::header(
+                    ui,
+                    &mut self.search,
+                    &mut self.view,
+                    &mut self.dark,
+                    palette,
+                );
             });
 
         // Footer (bottom).
         TopBottomPanel::bottom("footer")
             .frame(
                 egui::Frame::side_top_panel(&ctx.style())
-                    .fill(crate::ui::theme::INK)
-                    .inner_margin(Margin::symmetric(14, 6)),
+                    .fill(palette.bg)
+                    .inner_margin(Margin::symmetric(16, 6))
+                    .stroke(egui::Stroke::new(1.0_f32, border)),
             )
             .show(ctx, |ui| {
                 let log: Vec<String> = self.log.iter().cloned().collect();
-                crate::ui::views::footer(ui, counts, &log);
+                let node_path = match &self.facts.node {
+                    NodeFact::Found(path) => Some(path.as_str()),
+                    NodeFact::Missing => None,
+                };
+                crate::ui::views::footer(ui, counts, node_path, &self.runtime, &log, palette);
             });
 
-        // Inspector (right) when a card is selected.
-        if let Some(id) = selected.as_deref()
-            && let Some(card) = self.discovery.card(id)
-        {
-            SidePanel::right("inspector")
-                .default_width(320.0)
-                .min_width(240.0)
-                .frame(
-                    egui::Frame::side_top_panel(&ctx.style())
-                        .fill(crate::ui::theme::INK.gamma_multiply(0.6))
-                        .inner_margin(Margin::same(14)),
-                )
-                .show(ctx, |ui| {
-                    crate::ui::views::inspector(ui, card, &self.runtime, &mut actions);
-                });
-        }
-
-        // Main list (central).
-        CentralPanel::default().show(ctx, |ui| {
-            if !self.facts.node_ok() {
-                egui::Frame::group(ui.style())
-                    .fill(crate::ui::theme::AMBER.gamma_multiply(0.12))
-                    .corner_radius(8)
-                    .inner_margin(Margin::symmetric(12, 8))
-                    .show(ui, |ui| {
-                        ui.label(
-                            RichText::new(
-                                "Node.js was not found on PATH. Apps cannot start until it is \
+        // Main area (central).
+        CentralPanel::default()
+            .frame(
+                egui::Frame::central_panel(&ctx.style())
+                    .fill(palette.bg)
+                    .inner_margin(Margin::symmetric(20, 14)),
+            )
+            .show(ctx, |ui| {
+                if !self.facts.node_ok() {
+                    egui::Frame::NONE
+                        .fill(crate::ui::theme::AMBER.gamma_multiply(0.14))
+                        .corner_radius(8)
+                        .inner_margin(Margin::symmetric(12, 8))
+                        .show(ui, |ui| {
+                            ui.label(
+                                RichText::new(
+                                    "Node.js was not found on PATH. Apps cannot start until it is \
                                  installed or NUCLEUS_NODE points at `node.exe`.",
-                            )
+                                )
+                                .size(12.0)
+                                .color(crate::ui::theme::AMBER),
+                            );
+                        });
+                    ui.add_space(8.0);
+                }
+                for error in &self.facts.errors {
+                    ui.label(
+                        RichText::new(format!("⚠ {error}"))
                             .size(12.0)
                             .color(crate::ui::theme::AMBER),
-                        );
-                    });
-                ui.add_space(8.0);
-            }
-            crate::ui::views::main_list(
-                ui,
-                &self.discovery.cards,
-                &self.runtime,
-                self.filter,
-                &mut selected,
-                &mut actions,
-            );
-        });
+                    );
+                }
+                if !self.facts.errors.is_empty() {
+                    ui.add_space(8.0);
+                }
 
-        self.selected = selected;
+                crate::ui::views::main_area(
+                    ui,
+                    &self.discovery.cards,
+                    &self.runtime,
+                    &mut crate::ui::ViewState {
+                        view: self.view,
+                        search: &mut self.search,
+                        sort: &mut self.sort,
+                    },
+                    &mut actions,
+                    &mut self.icons,
+                    palette,
+                );
+            });
+
         for (id, action) in actions {
             self.apply_action(id, action);
         }

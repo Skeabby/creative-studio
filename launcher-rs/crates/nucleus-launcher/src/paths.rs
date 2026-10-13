@@ -9,8 +9,6 @@ use std::path::{Path, PathBuf};
 pub struct Paths {
     /// `<repo>` — contains `apps/` and `assets/`.
     pub repo_root: PathBuf,
-    /// `%APPDATA%\Nucleus` — installed apps, window profiles, indexes.
-    pub data_dir: PathBuf,
     /// `[<repo>/apps, %APPDATA%\Nucleus/apps]`, first root wins on id.
     pub app_roots: Vec<PathBuf>,
     /// `%APPDATA%\Nucleus\window-profiles\<app id>`.
@@ -48,7 +46,6 @@ impl Paths {
         Ok(Paths {
             repo_root,
             window_profiles_dir: data_dir.join("window-profiles"),
-            data_dir,
             app_roots,
             shell_exe,
             icon_ico,

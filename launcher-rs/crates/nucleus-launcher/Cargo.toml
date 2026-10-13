@@ -16,3 +16,4 @@ ureq.workspace = true
 eframe.workspace = true
 egui.workspace = true
 thiserror.workspace = true
+resvg = "0.48.1"

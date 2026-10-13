@@ -84,12 +84,6 @@ fn main() {
         window_size: window::APP_WINDOW_SIZE,
     });
     let facts = Facts {
-        repo_root: paths.repo_root.clone(),
-        data_dir: paths.data_dir.clone(),
-        window_shell_line: match &paths.shell_exe {
-            Some(shell) => format!("window shell  {}", shell.display()),
-            None => "window shell  default browser (shell not built)".to_string(),
-        },
         node: match node {
             Some(path) => NodeFact::Found(path),
             None => NodeFact::Missing,
@@ -109,7 +103,6 @@ fn main() {
         "Nucleus",
         native_options,
         Box::new(move |cc| {
-            ui::configure_theme(&cc.egui_ctx);
             Ok(Box::new(app::LauncherApp::new(
                 cc, discovery, runtime, events, facts,
             )))

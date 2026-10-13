@@ -28,6 +28,9 @@ impl Discovery {
         self.apps.iter().find(|app| app.id() == id)
     }
 
+    /// Look up any card (app or planned entry). Used by tests now; the
+    /// M2 inspector will read it when the detail panel lands.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn card(&self, id: &str) -> Option<&Card> {
         self.cards.iter().find(|card| card.id() == id)
     }
