@@ -144,9 +144,9 @@ apps/launcher         # the launcher window (grid/table UI + /api/apps)
 apps/pdf-workbench    # app #1: local HTTP server + web UI
 apps/notes            # app #2: Markdown notes on the command bus
 schemas/              # JSON Schema - the source of truth for codegen
-tools/                # codegen, validators, screenshot capture
+tools/                # codegen, schema validators
 shell/                # native window host (WinForms + WebView2)
-scripts/              # shell build, desktop entry point, shortcut installer
+scripts/              # shell build, release build, screenshots, shortcut installer
 launcher-rs/          # native Rust launcher: core crate + egui/eframe UI crate
 ```
 
