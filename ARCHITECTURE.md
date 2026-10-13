@@ -67,6 +67,20 @@
 > anything committed to the repo. The short TikTok promo clips keep their provenance labels on
 > purpose (platform AI-labeling rules) and live outside the public checkout.
 
+> **Update #7 (2026-10-13) — the launcher goes native in Rust (M1).** Inspired by the open-source
+> ArtCraft Launcher (craft-launcher 0.3.2, MIT/Apache-2.0 code, trademarked brand), the launcher is
+> being rebuilt as a standalone native app in **`launcher-rs/`** — own branding, own app set, own
+> architecture (two crates, egui/eframe 0.32 glow backend), so nothing is copied from ArtCraft. M1
+> (discovery + Open/Stop) is **built, green and verified locally**: `cargo check` and
+> `clippy --all-targets -- -D warnings` clean, **47 unit tests passing** (incl. a real node
+> spawn/kill-tree), `--smoke` reports 3 real apps + 5 planned (8 cards) and locates node, and the
+> release binary is ~6.8 MB. To link it, MSVC Build Tools + rustup were installed (rustup 1.29.1,
+> rustc/cargo 1.99.0 stable-msvc); CI runs on `windows-latest` via
+> `.github/workflows/launcher-rs.yml` (fmt + clippy + tests + release build, path-filtered on
+> `launcher-rs/**`). The Node launcher remains the daily driver until **M2** (catalogue +
+> `.nucleusapp` install/update) lands; the full spec, data model and M1/M2 semantics live in
+> `launcher-rs/SPEC.md`.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---

@@ -1,0 +1,13 @@
+[package]
+name = "nucleus-launcher-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pure data model and parsers for the Nucleus app suite (manifests, roadmap, catalog, installed index, status). No I/O."
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+semver.workspace = true
+thiserror.workspace = true

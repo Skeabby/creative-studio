@@ -11,6 +11,10 @@ apps/pdf-workbench/public/vendor/
 # generated shortcut icon
 assets/
 
+# rust (launcher-rs)
+launcher-rs/target/
+launcher-rs/mirror/*.nucleusapp
+
 # turbo
 .turbo/
 

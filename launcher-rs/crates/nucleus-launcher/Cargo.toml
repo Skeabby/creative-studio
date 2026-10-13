@@ -1,0 +1,18 @@
+[package]
+name = "nucleus-launcher"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Nucleus desktop launcher - a light, Windows-first launcher for the Nucleus app suite."
+
+[dependencies]
+nucleus-launcher-core = { path = "../nucleus-launcher-core" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+zip.workspace = true
+ureq.workspace = true
+eframe.workspace = true
+egui.workspace = true
+thiserror.workspace = true

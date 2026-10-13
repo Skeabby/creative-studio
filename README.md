@@ -8,6 +8,7 @@
 **Drop-in plugins in native WebView2 windows — no Electron, no install wizard.**
 
 [![CI](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml)
+[![Launcher (Rust)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](#)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-43853D.svg)](https://nodejs.org)
@@ -48,6 +49,9 @@ different route:
 - **A launcher that looks the part.** An app-store view: big icons, status and version, grouped by
   category, a sortable table, a **Ctrl+K command palette**, an app detail panel that lists each
   app's commands, and light/dark themes.
+- **A Rust-native launcher (M1).** The launcher is being reimplemented in Rust (`launcher-rs/`):
+  an egui/eframe window in the spirit of open-source craft-launcher but lighter and original —
+  discovery, Open/Stop and a 3-pane UI, plus a `--smoke`/`--list` CLI. Node stays the plugin runtime.
 
 ## Apps
 
@@ -119,6 +123,7 @@ schemas/              # JSON Schema - the source of truth for codegen
 tools/                # codegen, validators, screenshot capture
 shell/                # native window host (WinForms + WebView2)
 scripts/              # shell build, desktop entry point, shortcut installer
+launcher-rs/          # Rust native launcher (M1): core + egui/eframe UI crates
 ```
 
 Every app is just a folder with a `nucleus.app.json` manifest describing what it is and how to
@@ -136,6 +141,14 @@ npm run nucleus -- open nucleus.pdf-workbench
 npm run nucleus -- serve  # launcher server only, no window
 npm run start:pdf         # run PDF Workbench directly
 npm run mcp               # run the MCP server over stdio
+```
+
+From `launcher-rs/` (Rust launcher:
+
+```bash
+cargo run --release -p nucleus-launcher -- --smoke   # headless smoke test (apps + planned + node)
+cargo run --release -p nucleus-launcher -- --list    # discovered vs planned apps
+cargo run --release -p nucleus-launcher              # open the native window
 ```
 
 ## Agent-ready (MCP)
