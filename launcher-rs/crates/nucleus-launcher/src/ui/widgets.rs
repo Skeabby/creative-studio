@@ -8,18 +8,20 @@ use std::sync::Arc;
 
 use egui::text::LayoutJob;
 use egui::{
-    Align2, Color32, CornerRadius, FontId, Galley, Rect, Response, Sense, Stroke, StrokeKind,
-    TextFormat, TextureHandle, Ui, Vec2, vec2,
+    Align2, Color32, CornerRadius, FontId, Galley, Painter, Rect, Response, Sense, Stroke,
+    StrokeKind, TextFormat, TextureHandle, Ui, Vec2, vec2,
 };
 
 use nucleus_launcher_core::{AppStatus, Card, Category};
 
-use super::theme::{CONTROL_H, HUD_SIZE, Tokens, Tone, fonts};
+use super::theme::{CONTROL_H, HUD_SIZE, Tokens, Tone, alpha, fonts};
 
 /// Letter-spacing added to HUD labels, as a multiple of the font size.
 const HUD_SPACING: f32 = 0.15;
 /// Letter-spacing used inside buttons and tags.
 const TIGHT_SPACING: f32 = 0.12;
+/// Length of the arms of a corner bracket.
+const BRACKET: f32 = 10.0;
 
 // --- HUD text ---------------------------------------------------------------
 
@@ -98,11 +100,10 @@ pub fn nav_link(ui: &mut Ui, t: &Tokens, label: &str, active: bool) -> Response 
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let span = rect;
     if active || response.hovered() {
-        ui.painter()
-            .rect_filled(span, CornerRadius::ZERO, t.invert_bg);
+        ui.painter().rect_filled(span, CornerRadius::ZERO, t.accent);
     }
     let ink = if active || response.hovered() {
-        t.invert_fg
+        t.on_accent
     } else {
         t.muted
     };
@@ -220,8 +221,8 @@ pub fn cells(ui: &mut Ui, t: &Tokens, items: &[Cell<'_>], selected: usize) -> Op
         let mut fill = Color32::TRANSPARENT;
         let mut ink = t.muted;
         if active {
-            fill = t.invert_bg;
-            ink = t.invert_fg;
+            fill = t.accent;
+            ink = t.on_accent;
         } else if response.hovered() {
             fill = t.sunken;
             ink = t.ink_strong;
@@ -286,15 +287,15 @@ pub fn button(
     let (fill, ink, stroke) = match kind {
         ButtonKind::Primary => {
             let fill = if hovered {
-                t.invert_bg.gamma_multiply(0.82)
+                t.accent.gamma_multiply(0.82)
             } else {
-                t.invert_bg
+                t.accent
             };
-            (fill, t.invert_fg, Stroke::NONE)
+            (fill, t.on_accent, Stroke::NONE)
         }
         ButtonKind::Secondary => {
             if hovered {
-                (t.invert_bg, t.invert_fg, Stroke::NONE)
+                (t.accent, t.on_accent, Stroke::NONE)
             } else {
                 (t.bg, t.ink, Stroke::new(1.0_f32, t.line_strong))
             }
@@ -329,15 +330,15 @@ pub fn glyph_button(ui: &mut Ui, t: &Tokens, glyph: &str, enabled: bool) -> Resp
     let hovered = enabled && response.hovered();
     let painter = ui.painter();
     if hovered {
-        painter.rect_filled(rect, CornerRadius::ZERO, t.invert_bg);
+        painter.rect_filled(rect, CornerRadius::ZERO, t.accent);
     }
     painter.rect_stroke(
         rect,
         CornerRadius::ZERO,
-        Stroke::new(1.0_f32, if hovered { t.invert_bg } else { t.line }),
+        Stroke::new(1.0_f32, if hovered { t.accent } else { t.line }),
         StrokeKind::Inside,
     );
-    let ink = if hovered { t.invert_fg } else { t.muted };
+    let ink = if hovered { t.on_accent } else { t.muted };
     painter.text(
         rect.center(),
         Align2::CENTER_CENTER,
@@ -360,8 +361,28 @@ pub fn rule(ui: &mut Ui, t: &Tokens, height: f32) {
     );
 }
 
+/// Four corner brackets just inside `rect` — the reticle motif worn by the
+/// hovered card and by the window frame. `a` is their opacity, so callers can
+/// fade them in.
+pub fn brackets(painter: &Painter, rect: Rect, color: Color32, a: u8) {
+    let stroke = Stroke::new(1.0_f32, alpha(color, a));
+    for (corner, dx, dy) in [
+        (rect.left_top(), 1.0, 1.0),
+        (rect.right_top(), -1.0, 1.0),
+        (rect.left_bottom(), 1.0, -1.0),
+        (rect.right_bottom(), -1.0, -1.0),
+    ] {
+        painter.line_segment([corner, corner + vec2(BRACKET * dx, 0.0)], stroke);
+        painter.line_segment([corner, corner + vec2(0.0, BRACKET * dy)], stroke);
+    }
+}
+
 /// A flat icon tile: recessed square, hairline border, then the rasterised
 /// icon (or a letter when the app has no icon).
+///
+/// The tile wears the Nucleus **orbit**: a hairline ring circumscribing the
+/// icon with a satellite dot on it, echoing the brand mark. Both brighten when
+/// the pointer is over the tile.
 pub fn icon_tile(
     ui: &mut Ui,
     t: &Tokens,
@@ -371,7 +392,21 @@ pub fn icon_tile(
     size: f32,
 ) -> Rect {
     let (rect, _) = ui.allocate_exact_size(Vec2::splat(size), Sense::hover());
+    let hot = ui.rect_contains_pointer(rect);
     let painter = ui.painter();
+    // The orbit is painted outside the tile, on the card's own surface.
+    let orbit = size * 0.5 + 6.0;
+    painter.circle_stroke(
+        rect.center(),
+        orbit,
+        Stroke::new(1.0_f32, alpha(color, if hot { 200 } else { 88 })),
+    );
+    let satellite = -0.55_f32; // radians, matching the tilt of the brand mark
+    painter.circle_filled(
+        rect.center() + vec2(orbit * satellite.cos(), orbit * satellite.sin()),
+        2.5,
+        alpha(color, if hot { 255 } else { 150 }),
+    );
     // A tint of the app colour frames the icon: our own mark, and it keeps
     // dark-on-dark app icons readable against the page background.
     let well = super::theme::blend(t.sunken, color, if t.dark { 0.22 } else { 0.14 });
@@ -427,7 +462,7 @@ pub fn card_color(card: &Card, t: &Tokens) -> Color32 {
 pub fn category_color(category: Option<Category>, t: &Tokens) -> Color32 {
     match category {
         Some(Category::System) => t.accent,
-        Some(Category::Image) => super::theme::hex_color("#6D5EF8").unwrap_or(t.accent),
+        Some(Category::Image) => super::theme::hex_color("#F472B6").unwrap_or(t.accent),
         Some(Category::Vector) => super::theme::hex_color("#22D3EE").unwrap_or(t.accent),
         Some(Category::Pdf) => super::theme::hex_color("#E85A6C").unwrap_or(t.bad),
         Some(Category::Video) => super::theme::hex_color("#F59E0B").unwrap_or(t.warn),

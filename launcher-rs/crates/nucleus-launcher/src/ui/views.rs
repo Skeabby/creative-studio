@@ -554,12 +554,8 @@ fn card(
             CornerRadius::ZERO,
             blend(t.bg, app_color, 0.05 * lift),
         );
-        // The app-coloured rule wiping in along the top edge.
-        painter.rect_filled(
-            Rect::from_min_size(cell.min, vec2(cell.width() * lift, 2.0)),
-            CornerRadius::ZERO,
-            app_color,
-        );
+        // Our reticle: four app-coloured corner brackets fade in on hover.
+        widgets::brackets(painter, cell, app_color, (215.0 * lift) as u8);
     }
 
     let inner = Rect::from_min_max(

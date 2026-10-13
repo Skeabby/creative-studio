@@ -246,6 +246,16 @@ impl eframe::App for LauncherApp {
         for (id, action) in actions {
             self.apply_action(id, action);
         }
+
+        // --- frame corners: our reticle, painted last so it sits on top -----
+        {
+            let painter = ctx.layer_painter(egui::LayerId::new(
+                egui::Order::Foreground,
+                egui::Id::new("nucleus-frame"),
+            ));
+            let rect = ctx.screen_rect().shrink(3.0);
+            crate::ui::widgets::brackets(&painter, rect, t.accent, 120);
+        }
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

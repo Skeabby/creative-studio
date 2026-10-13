@@ -1,9 +1,14 @@
 //! Design tokens, themes and embedded fonts for the Nucleus launcher.
 //!
 //! The look is deliberately flat and editorial: **hard edges** (every corner
-//! radius is zero), **hairline rules** instead of shadows, a single blue
-//! accent, and three typefaces — Archivo for display, Inter for body text and
-//! Geist Mono for the uppercase "HUD" labels.
+//! radius is zero), **hairline rules** instead of shadows, a single **brand
+//! violet** accent reserved for the launcher's own chrome (active cells, the
+//! view switch, primary actions), and three typefaces — Archivo for display,
+//! Inter for body text and Geist Mono for the uppercase "HUD" labels.
+//!
+//! Two motifs say *Nucleus* rather than any other launcher: the **orbit** — a
+//! ring and a satellite drawn around every app icon, echoing the brand mark —
+//! and **corner brackets** on the frame and on the hovered card.
 //!
 //! Fonts are embedded under the SIL Open Font License; their licence texts
 //! ship next to the binaries in `assets/fonts/OFL-*.txt`.
@@ -35,8 +40,9 @@ pub const BG_LIGHT: Color32 = rgb(0xF2_F1_EE);
 pub const SUNKEN_LIGHT: Color32 = rgb(0xE9_E8_E4);
 /// `#101014` — ink (light theme).
 pub const INK_LIGHT: Color32 = rgb(0x10_10_14);
-/// `#2D81FF` — brand blue, both themes.
-pub const ACCENT: Color32 = rgb(0x2D_81_FF);
+/// `#6D5EF8` — brand violet: the Nucleus accent, both themes. It is reserved
+/// for the launcher's own chrome, so no app colour may reuse it.
+pub const ACCENT: Color32 = rgb(0x6D_5E_F8);
 
 const fn rgb(hex: u32) -> Color32 {
     Color32::from_rgb(
@@ -47,7 +53,8 @@ const fn rgb(hex: u32) -> Color32 {
 }
 
 /// The same colour at a given alpha (used for muted/faint/line inks).
-fn alpha(color: Color32, a: u8) -> Color32 {
+/// The same colour at a different opacity.
+pub fn alpha(color: Color32, a: u8) -> Color32 {
     Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), a)
 }
 
@@ -83,14 +90,13 @@ pub struct Tokens {
     pub line: Color32,
     /// Stronger hairline for outlined controls.
     pub line_strong: Color32,
-    /// Brand blue surface.
+    /// Brand violet surface: active cells, the active view switch, primary
+    /// actions, hovered glyph buttons.
     pub accent: Color32,
-    /// Brand blue as text/icon ink.
+    /// Brand violet as text/icon ink.
     pub accent_ink: Color32,
-    /// Inverted (solid) control background.
-    pub invert_bg: Color32,
-    /// Inverted (solid) control foreground.
-    pub invert_fg: Color32,
+    /// Ink painted on top of [`Tokens::accent`].
+    pub on_accent: Color32,
     pub good: Color32,
     pub warn: Color32,
     pub bad: Color32,
@@ -110,9 +116,8 @@ impl Tokens {
             line: alpha(ink, 38),
             line_strong: alpha(ink, 102),
             accent: ACCENT,
-            accent_ink: rgb(0x74_AA_FF),
-            invert_bg: Color32::WHITE,
-            invert_fg: rgb(0x0B_0B_0C),
+            accent_ink: rgb(0xA7_9B_FF),
+            on_accent: Color32::WHITE,
             good: rgb(0x3F_D6_B8),
             warn: rgb(0xFF_C1_4D),
             bad: rgb(0xFF_62_59),
@@ -132,9 +137,8 @@ impl Tokens {
             line: alpha(ink, 41),
             line_strong: alpha(ink, 102),
             accent: ACCENT,
-            accent_ink: rgb(0x16_59_C4),
-            invert_bg: rgb(0x10_10_14),
-            invert_fg: rgb(0xF2_F1_EE),
+            accent_ink: rgb(0x4A_3A_C8),
+            on_accent: Color32::WHITE,
             good: rgb(0x0A_75_63),
             warn: rgb(0x8A_58_00),
             bad: rgb(0xB3_26_1E),
@@ -321,15 +325,15 @@ pub fn configure_theme(ctx: &Context, t: &Tokens) {
     widgets.inactive.bg_stroke = egui::Stroke::new(1.0_f32, t.line_strong);
     widgets.inactive.fg_stroke = egui::Stroke::new(1.0_f32, t.ink);
 
-    widgets.hovered.bg_fill = t.invert_bg;
-    widgets.hovered.weak_bg_fill = t.invert_bg;
+    widgets.hovered.bg_fill = t.accent;
+    widgets.hovered.weak_bg_fill = t.accent;
     widgets.hovered.bg_stroke = egui::Stroke::NONE;
-    widgets.hovered.fg_stroke = egui::Stroke::new(1.0_f32, t.invert_fg);
+    widgets.hovered.fg_stroke = egui::Stroke::new(1.0_f32, t.on_accent);
 
-    widgets.active.bg_fill = t.invert_bg;
-    widgets.active.weak_bg_fill = t.invert_bg;
+    widgets.active.bg_fill = t.accent;
+    widgets.active.weak_bg_fill = t.accent;
     widgets.active.bg_stroke = egui::Stroke::NONE;
-    widgets.active.fg_stroke = egui::Stroke::new(1.0_f32, t.invert_fg);
+    widgets.active.fg_stroke = egui::Stroke::new(1.0_f32, t.on_accent);
 
     for widget in [
         &mut widgets.noninteractive,
@@ -372,8 +376,8 @@ mod tests {
 
     #[test]
     fn parses_rrggbb() {
-        assert_eq!(hex_color("#2D81FF"), Some(ACCENT));
-        assert_eq!(hex_color("2d81ff"), Some(ACCENT));
+        assert_eq!(hex_color("#6D5EF8"), Some(ACCENT));
+        assert_eq!(hex_color("6d5ef8"), Some(ACCENT));
         assert_eq!(hex_color("no"), None);
         assert_eq!(hex_color("#fff"), None);
         assert_eq!(hex_color(""), None);
