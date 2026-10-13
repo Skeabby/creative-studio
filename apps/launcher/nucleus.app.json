@@ -7,7 +7,6 @@
   "author": "Nucleus",
   "category": "system",
   "status": "alpha",
-  "inspiredBy": "ArtCraft Launcher",
   "icon": "icon.svg",
   "launch": {
     "kind": "server",

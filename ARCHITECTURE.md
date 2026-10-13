@@ -112,6 +112,20 @@
 > icon via `ViewportBuilder::with_icon`. **61 tests** (29 launcher + 32 core); the toolbar height and
 > grid geometry are now covered by unit tests so the empty-page regression cannot come back.
 
+> **Update #10 (2026-10-13) — our own signature: brand violet, orbits, reticles.** Update #8 borrowed
+> the reference's visual language closely enough that the result read as a clone, so the chrome now
+> carries a mark of its own. The accent is the **brand violet `#6D5EF8`** — the nucleus colour of the
+> logo — in both themes, and it is *reserved for the launcher's own chrome*: the active view cell, the
+> active filter cell, primary actions and hovered glyph buttons are solid violet instead of white
+> blocks, while the app palette keeps the violet out (the Image category, and its roadmap entry, move
+> to pink `#F472B6`). The `invert_bg`/`invert_fg` token pair collapsed into **`accent` /
+> `on_accent`**. Two motifs carry the identity: every icon tile wears an **orbit** — a hairline ring
+> circumscribing the icon with a satellite dot, faint at rest and bright under the pointer
+> (`widgets::icon_tile`) — and the hovered card plus the four corners of the window frame wear
+> **corner brackets** (`widgets::brackets`: the card's fade in with the existing hover animation, the
+> frame's are painted in a `Foreground` layer). The card's top-edge hover rule is gone. Version bumped
+> to **0.3.0** for the release; 61 tests still green, clippy clean.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---
@@ -341,6 +355,10 @@ Command surface: `pdf.open`, `pdf.split`, `pdf.merge`, `pdf.rotate`, `pdf.reorde
 - **D8** flat node table + child index; canonical JSON in ZIP; command `oplog` as replay backbone.
 - **D9** launcher ships one core; apps depend on `coreApiVersion` ABI major.
 - **D10** resolve OneDrive cache hazard in Phase 0.
+- **D11** the launcher wears its own signature (violet chrome, orbit tiles, brackets) rather than
+  reproducing the reference UI; the accent is never reused as an app colour.
+- **D12** releases: `v0.3.0` (native Rust launcher) is *Latest*; `v0.1.0` keeps the TypeScript
+  monorepo; superseded launcher releases are deleted rather than accumulated.
 
 ---
 

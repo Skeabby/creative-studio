@@ -5,7 +5,7 @@
 ### The creative suite that runs itself.
 
 **One command bus. Every app speaks GUI, CLI and MCP.**
-**Drop-in plugins in native WebView2 windows — no Electron, no install wizard.**
+**A native Rust launcher, drop-in plugins in WebView2 windows — no Electron, no install wizard.**
 
 [![CI](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml)
 [![Launcher (Rust)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml)
@@ -46,18 +46,21 @@ different route:
   window with taskbar identity and its own icon — compiled with the `csc.exe` already on Windows.
 - **One core to rule the suite.** `@nucleus/core` owns the document model, a command bus and
   undo/redo. Frontends are thin adapters, so features land once and become available everywhere.
-- **A launcher that looks the part.** An app-store view: big icons, status and version, grouped by
-  category, a sortable table, a **Ctrl+K command palette**, an app detail panel that lists each
-  app's commands, and light/dark themes.
-- **A Rust-native launcher (M1).** The launcher is being reimplemented in Rust (`launcher-rs/`):
-  an egui/eframe window in the spirit of open-source craft-launcher but lighter and original —
-  discovery, Open/Stop and a 3-pane UI, plus a `--smoke`/`--list` CLI. Node stays the plugin runtime.
+- **A native launcher, no Electron.** `launcher-rs/` is a single Rust binary (egui/eframe, ~12 MB,
+  no runtime installed): manifest discovery, Open / Stop, grid and table views, category filter,
+  search, dark/light themes, a `--smoke`/`--list` CLI — and a flat hairline design of its own:
+  brand violet reserved for the chrome, orbit icon tiles, corner brackets.
+- **A launcher that looks the part.** Big app icons with status and version, grouped by category, a
+  sortable table, an app detail panel that lists each app's commands, and light/dark themes.
+- **Two launchers, one manifest.** The native one above is the default entry point; the TypeScript
+  launcher (`apps/launcher`, `packages/launcher`) shipped in `v0.1.0` and stays in the repo as the
+  reference implementation over the same `nucleus.app.json` files.
 
 ## Apps
 
 | App | Status | What it does |
 |-----|--------|--------------|
-| **Nucleus launcher** | alpha | Every app in one window: search, category groups, sortable table, Ctrl+K palette, detail panel, Open / Stop, themes. |
+| **Nucleus launcher** | alpha | The **native Rust launcher** (`launcher-rs/`): every app in one window — grid and table views, category filter, search, Open / Stop, live log, dark + light themes, its own flat hairline design. |
 | **PDF Workbench** | beta | Merge, reorder, rotate, delete pages, undo/redo, save/open projects, export. |
 | **Notes** | alpha | Markdown notes, notebooks with undo/redo and full-text search. |
 | Image Editor | planned | Layers, masks, non-destructive adjustments and export. |
@@ -68,22 +71,39 @@ different route:
 
 ## Quickstart (Windows)
 
+The launcher is the native Rust binary; the apps it hosts are Node/TypeScript. Easiest path: grab
+`nucleus-launcher-v0.3.0-win64.zip` from the [latest release](https://github.com/Skeabby/nucleus/releases/latest),
+then build the apps once:
+
 ```powershell
 npm install
 npm run build
-npm start          # opens the Nucleus launcher window
+```
+
+Run the launcher **from the repo root** — that is where it looks for `apps\`:
+
+```powershell
+.\launcher-rs\target\release\nucleus-launcher.exe
+```
+
+To build the launcher from source instead (needs a Rust toolchain):
+
+```powershell
+cargo build --release --manifest-path launcher-rs\Cargo.toml
 ```
 
 Click **Open** on *PDF Workbench* — it starts on a free port in its own window. Close the
-launcher window to shut the whole nucleus down.
+launcher window to shut the whole nucleus down. Node.js must be on `PATH` for the apps themselves.
 
 ### Make it a real desktop app
 
 ```powershell
-npm run shell      # (one-time) build the native window shell -> assets\nucleus-shell.exe
-npm run shortcut   # create "Nucleus.lnk" on the desktop, with an icon
+npm run shell                       # (one-time) build the native window shell -> assets\nucleus-shell.exe
+powershell -File scripts\install-shortcut.ps1   # "Nucleus.lnk" on the desktop, with an icon
 ```
 
+The shortcut points straight at `launcher-rs\target\release\nucleus-launcher.exe`, with the repo
+root as its working directory; it falls back to the TypeScript entry if that binary is missing.
 Double-click **Nucleus** like any other Windows app.
 
 ## How it works
@@ -123,7 +143,7 @@ schemas/              # JSON Schema - the source of truth for codegen
 tools/                # codegen, validators, screenshot capture
 shell/                # native window host (WinForms + WebView2)
 scripts/              # shell build, desktop entry point, shortcut installer
-launcher-rs/          # Rust native launcher (M1): core + egui/eframe UI crates
+launcher-rs/          # native Rust launcher: core crate + egui/eframe UI crate
 ```
 
 Every app is just a folder with a `nucleus.app.json` manifest describing what it is and how to
@@ -143,11 +163,13 @@ npm run start:pdf         # run PDF Workbench directly
 npm run mcp               # run the MCP server over stdio
 ```
 
-From `launcher-rs/` (Rust launcher:
+The native launcher is a cargo workspace (`launcher-rs/`). From that directory:
 
 ```bash
+cargo test                                           # 61 unit tests (core + UI)
+cargo clippy --all-targets -- -D warnings            # lints are part of the contract
 cargo run --release -p nucleus-launcher -- --smoke   # headless smoke test (apps + planned + node)
-cargo run --release -p nucleus-launcher -- --list    # discovered vs planned apps
+cargo run --release -p nucleus-launcher -- --list     # discovered vs planned apps
 cargo run --release -p nucleus-launcher              # open the native window
 ```
 
@@ -161,8 +183,9 @@ command bus as the GUI, so the whole suite is scriptable *and* promptable.
 ## Roadmap
 
 The phased plan, design decisions and risks live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-Short version: launcher + first three apps (**done**) → more apps → JSON-RPC frontend → optional
-Tauri packaging for cross-platform native bundles.
+Short version: launcher (native Rust, `v0.3.0`) + first three apps (**done**) → **M2**: catalogue and
+`.nucleusapp` install/update so a release runs without the repo checkout → more apps → JSON-RPC
+frontend → packaging for cross-platform native bundles.
 
 ## Contributing
 

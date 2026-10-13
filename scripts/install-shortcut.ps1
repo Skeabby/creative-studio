@@ -2,6 +2,10 @@
 # launches like any other Windows app.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\install-shortcut.ps1
+#
+# The shortcut points at the native Rust launcher
+# (launcher-rs\target\release\nucleus-launcher.exe) and falls back to the
+# legacy TypeScript entry (scripts\nucleus.ps1) when it has not been built.
 param(
     [string]$Name = "Nucleus"
 )
@@ -10,11 +14,12 @@ $ErrorActionPreference = "Stop"
 
 $repo = Split-Path -Parent $PSScriptRoot
 $assets = Join-Path $repo "assets"
+$exe = Join-Path $repo "launcher-rs\target\release\nucleus-launcher.exe"
 $entry = Join-Path $repo "scripts\nucleus.ps1"
 $iconPath = Join-Path $assets "nucleus.ico"
 
-if (-not (Test-Path -LiteralPath $entry)) {
-    throw "Missing entry script: $entry"
+if (-not (Test-Path -LiteralPath $exe) -and -not (Test-Path -LiteralPath $entry)) {
+    throw "Neither the Rust launcher ($exe) nor the legacy entry ($entry) exists."
 }
 
 # --- icon ------------------------------------------------------------------
@@ -100,8 +105,16 @@ $linkPath = Join-Path $desktop "$Name.lnk"
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($linkPath)
-$shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$entry`""
+if (Test-Path -LiteralPath $exe) {
+    $shortcut.TargetPath = $exe
+    $shortcut.Arguments = ""
+} else {
+    Write-Warning "Rust launcher not built; falling back to scripts\nucleus.ps1. Build it with: cargo build --release --manifest-path launcher-rs\Cargo.toml"
+    $shortcut.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$entry`""
+}
+# The working directory stays the repo root: that is where the launcher looks
+# for `apps\` to build its catalogue.
 $shortcut.WorkingDirectory = $repo
 $shortcut.Description = "Nucleus - launcher for the nucleus apps"
 if ($iconPath -and (Test-Path -LiteralPath $iconPath)) {
