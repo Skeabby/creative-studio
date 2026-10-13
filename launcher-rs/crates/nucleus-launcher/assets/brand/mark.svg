@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <g transform="translate(256,256)" fill="none">
+    <!-- The Nucleus mark, tuned to stay legible at 24 px: two bold orbits, a
+         solid nucleus and two satellites. The rings use a mid grey so the mark
+         reads against both the dark and the light shell without tinting. -->
+    <ellipse rx="182" ry="72" stroke="#8A9099" stroke-width="20" transform="rotate(-28)"/>
+    <ellipse rx="182" ry="72" stroke="#8A9099" stroke-width="20" transform="rotate(88)"/>
+    <circle r="74" fill="#6D5EF8"/>
+    <circle cx="182" cy="0" r="34" fill="#22D3EE" transform="rotate(-28)"/>
+    <circle cx="182" cy="0" r="34" fill="#22D3EE" transform="rotate(88)"/>
+  </g>
+</svg>

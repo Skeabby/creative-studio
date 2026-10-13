@@ -172,7 +172,7 @@ impl eframe::App for LauncherApp {
                         .stroke(border),
                 )
                 .show(ctx, |ui| {
-                    crate::ui::views::header(ui, &t, &mut state);
+                    crate::ui::views::header(ui, &t, &mut state, &mut self.icons);
                 });
 
             // --- footer, the status bar -------------------------------------

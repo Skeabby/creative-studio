@@ -120,7 +120,7 @@ pub fn header_rule(ui: &mut Ui, t: &Tokens) {
 
 // --- Chips ------------------------------------------------------------------
 
-/// A solid chip: the app number tab, "Launcher" tag, "Update" flag.
+/// A solid chip: the app number tab, "Update" flag.
 pub fn tag(ui: &mut Ui, text: &str, fill: Color32, ink: Color32) -> Response {
     let galley = hud_job(ui, text, fonts::mono_bold(HUD_SIZE), TIGHT_SPACING);
     let size = vec2(galley.size().x + 24.0, galley.size().y + 16.0);
@@ -129,6 +129,23 @@ pub fn tag(ui: &mut Ui, text: &str, fill: Color32, ink: Color32) -> Response {
     painter.rect_filled(rect, CornerRadius::ZERO, fill);
     let pos = rect.min + vec2(12.0, 8.0);
     painter.galley(pos, galley, ink);
+    response
+}
+
+/// An outlined chip in `color`: hairline border, no fill.
+pub fn chip(ui: &mut Ui, text: &str, color: Color32) -> Response {
+    let galley = hud_job(ui, text, fonts::mono_bold(HUD_SIZE), TIGHT_SPACING);
+    let size = vec2(galley.size().x + 24.0, galley.size().y + 16.0);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
+    let painter = ui.painter();
+    painter.rect_stroke(
+        rect,
+        CornerRadius::ZERO,
+        Stroke::new(1.0_f32, color),
+        StrokeKind::Inside,
+    );
+    let pos = rect.min + vec2(12.0, 8.0);
+    painter.galley(pos, galley, color);
     response
 }
 
@@ -355,10 +372,13 @@ pub fn icon_tile(
 ) -> Rect {
     let (rect, _) = ui.allocate_exact_size(Vec2::splat(size), Sense::hover());
     let painter = ui.painter();
-    painter.rect_filled(rect, CornerRadius::ZERO, t.sunken);
+    // A tint of the app colour frames the icon: our own mark, and it keeps
+    // dark-on-dark app icons readable against the page background.
+    let well = super::theme::blend(t.sunken, color, if t.dark { 0.22 } else { 0.14 });
+    painter.rect_filled(rect, CornerRadius::ZERO, well);
     match texture {
         Some(texture) => {
-            let inset = size * 0.10;
+            let inset = size * 0.08;
             painter.image(
                 texture.id(),
                 rect.shrink(inset),
@@ -384,7 +404,7 @@ pub fn icon_tile(
     painter.rect_stroke(
         rect,
         CornerRadius::ZERO,
-        Stroke::new(1.0_f32, t.line),
+        Stroke::new(1.0_f32, t.line_strong),
         StrokeKind::Inside,
     );
     rect

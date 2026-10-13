@@ -6,6 +6,14 @@ use std::path::Path;
 
 use egui::{Context, TextureHandle};
 
+/// The Nucleus app icon, embedded so the window icon never depends on files
+/// next to the executable.
+pub const BRAND_SVG: &[u8] = include_bytes!("../../assets/brand/nucleus.svg");
+
+/// The bare Nucleus mark (transparent plate) used in the header, where the
+/// plated app icon would read as a dark slab.
+pub const MARK_SVG: &[u8] = include_bytes!("../../assets/brand/mark.svg");
+
 /// Rasterises and caches app icons as GPU textures.
 pub struct IconStore {
     cache: HashMap<String, TextureHandle>,
@@ -31,8 +39,23 @@ impl IconStore {
         if self.cache.contains_key(key) {
             return self.cache.get(key);
         }
+        let bytes = std::fs::read(path).ok()?;
+        self.load_bytes(ctx, key, &bytes, size)
+    }
+
+    /// Render SVG bytes (e.g. the embedded brand mark) into a cached texture.
+    pub fn load_bytes(
+        &mut self,
+        ctx: &Context,
+        key: &str,
+        bytes: &[u8],
+        size: f32,
+    ) -> Option<&TextureHandle> {
+        if self.cache.contains_key(key) {
+            return self.cache.get(key);
+        }
         let pixels = size * ctx.pixels_per_point();
-        let rendered = render_svg(path, pixels).map(|(width, height, rgba)| {
+        let rendered = render_svg(bytes, pixels).map(|(width, height, rgba)| {
             let color_image = egui::ColorImage::from_rgba_unmultiplied([width, height], &rgba);
             ctx.load_texture(
                 format!("nucleus-icon:{key}"),
@@ -49,12 +72,11 @@ impl IconStore {
 
 /// Render an SVG to RGBA (unmultiplied) at most `px` pixels on its long side,
 /// returning the real pixel dimensions alongside the bytes.
-fn render_svg(path: &Path, px: f32) -> Option<(usize, usize, Vec<u8>)> {
+pub fn render_svg(data: &[u8], px: f32) -> Option<(usize, usize, Vec<u8>)> {
     use resvg::{tiny_skia, usvg};
 
-    let data = std::fs::read(path).ok()?;
     let opt = usvg::Options::default();
-    let tree = usvg::Tree::from_data(&data, &opt).ok()?;
+    let tree = usvg::Tree::from_data(data, &opt).ok()?;
 
     let size = tree.size();
     if size.width() <= 0.0 || size.height() <= 0.0 {
@@ -93,4 +115,49 @@ fn unpremultiply(rgba: &[u8]) -> Vec<u8> {
         out.extend_from_slice(&[r, g, b, a]);
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn apps_dir() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../apps")
+    }
+
+    #[test]
+    fn brand_mark_rasterises_to_a_square() {
+        let (w, h, rgba) = render_svg(BRAND_SVG, 64.0).expect("brand svg must render");
+        assert_eq!((w, h), (64, 64));
+        assert_eq!(rgba.len(), 64 * 64 * 4);
+        // The mark is mostly transparent: the artwork must not cover the square.
+        let opaque = rgba.chunks(4).filter(|p| p[3] > 200).count();
+        assert!(opaque > 0, "the mark must paint something");
+        assert!(opaque < 64 * 64, "the mark must leave transparent margins");
+    }
+
+    #[test]
+    fn every_app_icon_renders() {
+        let dir = apps_dir();
+        if !dir.is_dir() {
+            return; // running outside the pack checkout
+        }
+        for entry in std::fs::read_dir(&dir).expect("apps dir") {
+            let path = entry.expect("entry").path().join("icon.svg");
+            if !path.exists() {
+                continue;
+            }
+            let bytes = std::fs::read(&path).expect("read icon");
+            let (w, h, rgba) = render_svg(&bytes, 56.0).unwrap_or_else(|| panic!("{path:?}"));
+            assert!(w > 0 && h > 0, "{path:?} rendered empty");
+            assert_eq!(rgba.len(), w * h * 4, "{path:?} buffer size");
+            let visible = rgba.chunks(4).filter(|p| p[3] > 8).count();
+            assert!(visible > 0, "{path:?} renders fully transparent");
+        }
+    }
+
+    #[test]
+    fn garbage_svg_is_rejected_not_panicking() {
+        assert!(render_svg(b"not an svg", 32.0).is_none());
+    }
 }

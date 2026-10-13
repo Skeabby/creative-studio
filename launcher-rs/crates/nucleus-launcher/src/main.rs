@@ -91,11 +91,16 @@ fn main() {
         errors: discovery.errors.clone(),
     };
 
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("Nucleus")
+        .with_inner_size([1200.0, 760.0])
+        .with_min_inner_size([900.0, 600.0]);
+    // Our own mark on the taskbar/title bar: rasterised from the embedded SVG.
+    if let Some(icon) = window_icon() {
+        viewport = viewport.with_icon(icon);
+    }
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Nucleus")
-            .with_inner_size([1200.0, 760.0])
-            .with_min_inner_size([900.0, 600.0]),
+        viewport,
         ..Default::default()
     };
 
@@ -111,6 +116,16 @@ fn main() {
     if let Err(err) = result {
         eprintln!("error: {err}");
     }
+}
+
+/// The Nucleus mark as an `IconData`, rasterised from the embedded brand SVG.
+fn window_icon() -> Option<egui::IconData> {
+    let (width, height, rgba) = ui::icons::render_svg(ui::icons::BRAND_SVG, 256.0)?;
+    Some(egui::IconData {
+        rgba,
+        width: width as u32,
+        height: height as u32,
+    })
 }
 
 /// `--smoke`: a short JSON summary, exit 0 (exit 1 already handled above on a

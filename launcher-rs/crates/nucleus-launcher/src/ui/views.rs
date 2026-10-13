@@ -7,7 +7,7 @@
 
 use egui::{
     Align, Align2, Color32, CornerRadius, Layout, Margin, Pos2, Rect, Response, RichText, Sense,
-    Shape, Stroke, Ui, UiBuilder, pos2, vec2,
+    Shape, Stroke, Ui, UiBuilder, Vec2, pos2, vec2,
 };
 
 use nucleus_launcher_core::{AppStatus, Card, derive_status};
@@ -173,102 +173,140 @@ fn status_of(card: &Card) -> AppStatus {
 // ---------------------------------------------------------------------------
 
 /// The 48 px top bar: wordmark on the left, view switch and theme on the right.
-pub fn header(ui: &mut Ui, t: &Tokens, state: &mut ViewState<'_>) {
+pub fn header(ui: &mut Ui, t: &Tokens, state: &mut ViewState<'_>, icons: &mut IconStore) {
     let mut view = *state.view;
     let mut dark = *state.dark;
 
     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-        // Brand: an accent block plus the wordmark.
-        let (mark, _) = ui.allocate_exact_size(vec2(12.0, 12.0), Sense::hover());
-        ui.painter().rect_filled(mark, CornerRadius::ZERO, t.accent);
-        ui.add_space(2.0);
+        // Brand lockup: our orbit mark, the wordmark, then the build stamp.
+        brand_mark(ui, t, icons, 26.0);
+        ui.add_space(9.0);
         ui.label(
             RichText::new("Nucleus")
                 .font(fonts::display(17.0))
                 .color(t.ink_strong),
         );
-        ui.add_space(6.0);
+        ui.add_space(8.0);
+        widgets::chip(ui, concat!("v", env!("CARGO_PKG_VERSION")), t.ink);
+        ui.add_space(7.0);
         widgets::hud_inline(ui, "app suite launcher", t.faint, HUD_SIZE, 0.15);
 
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            // Theme toggle.
-            let glyph = if dark { "☀" } else { "☾" };
-            if widgets::glyph_button(ui, t, glyph, true).clicked() {
-                dark = !dark;
-            }
-            widgets::header_rule(ui, t);
-            // View switch.
-            if widgets::nav_link(ui, t, View::Table.label(), view == View::Table).clicked() {
-                view = View::Table;
-            }
-            if widgets::nav_link(ui, t, View::Grid.label(), view == View::Grid).clicked() {
-                view = View::Grid;
-            }
-            widgets::header_rule(ui, t);
-            widgets::tag(ui, "Launcher", t.invert_bg, t.invert_fg);
-            ui.add_space(6.0);
-            widgets::hud_inline(ui, "Nucleus app suite", t.muted, HUD_SIZE, 0.15);
-        });
+        let right = ui.available_rect_before_wrap();
+        ui.scope_builder(
+            UiBuilder::new()
+                .max_rect(right)
+                .layout(Layout::right_to_left(Align::Center)),
+            |ui| {
+                // Theme toggle.
+                let glyph = if dark { "☀" } else { "☾" };
+                if widgets::glyph_button(ui, t, glyph, true).clicked() {
+                    dark = !dark;
+                }
+                widgets::header_rule(ui, t);
+                // View switch.
+                if widgets::nav_link(ui, t, View::Table.label(), view == View::Table).clicked() {
+                    view = View::Table;
+                }
+                if widgets::nav_link(ui, t, View::Grid.label(), view == View::Grid).clicked() {
+                    view = View::Grid;
+                }
+            },
+        );
     });
 
     *state.view = view;
     *state.dark = dark;
 }
 
+/// The Nucleus mark: our embedded orbit logo (drawn on a transparent plate),
+/// tinted so it reads on both shells. Falls back to an accent square when the
+/// SVG cannot be rasterised.
+fn brand_mark(ui: &mut Ui, t: &Tokens, icons: &mut IconStore, size: f32) {
+    let texture = icons
+        .load_bytes(ui.ctx(), "nucleus-mark", crate::ui::icons::MARK_SVG, size)
+        .cloned();
+    let (rect, _) = ui.allocate_exact_size(Vec2::splat(size), Sense::hover());
+    match texture {
+        Some(texture) => ui.painter().image(
+            texture.id(),
+            rect,
+            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+            Color32::WHITE,
+        ),
+        None => ui.painter().rect_filled(rect, CornerRadius::ZERO, t.accent),
+    };
+}
+
 /// The 34 px control row: filter cells on the left, search + sort on the right.
+///
+/// The row is pinned to a `CONTROL_H` strip: a bare `with_layout` would take the
+/// whole remaining height and center its content vertically, starving the grid.
 pub fn toolbar(ui: &mut Ui, t: &Tokens, state: &mut ViewState<'_>, counts: Counts) {
     let mut filter = *state.filter;
     let mut sort = *state.sort;
     let view = *state.view;
 
-    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-        let items = [
-            Cell::new("All"),
-            Cell::with_count("Installed", counts.installed, t.muted),
-            Cell::with_count("Updates", counts.updates, t.warn),
-            Cell::with_count("Not installed", counts.not_installed, t.muted),
-            Cell::with_count("Roadmap", counts.planned, t.muted),
-        ];
-        let selected = filter_index(filter);
-        if let Some(clicked) = widgets::cells(ui, t, &items, selected) {
-            filter = filter_from_index(clicked);
-        }
-
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            // Sort control, grid view only (the table sorts from its headers).
-            if view == View::Grid {
-                let combo = egui::ComboBox::from_id_salt("nucleus-sort")
-                    .selected_text(
-                        RichText::new(sort.0.label())
-                            .font(fonts::body(13.0))
-                            .color(t.ink),
-                    )
-                    .width(140.0);
-                combo.show_ui(ui, |ui| {
-                    for key in [
-                        SortKey::Name,
-                        SortKey::Category,
-                        SortKey::Status,
-                        SortKey::Version,
-                    ] {
-                        if ui.selectable_label(sort.0 == key, key.label()).clicked()
-                            && (sort.0 != key || sort.1)
-                        {
-                            sort = if sort.0 == key {
-                                (key, !sort.1)
-                            } else {
-                                (key, true)
-                            };
-                        }
-                    }
-                });
-                ui.add_space(8.0);
-                widgets::hud_inline(ui, "sort", t.faint, HUD_SIZE, 0.15);
-                ui.add_space(12.0);
+    let strip = vec2(ui.available_width(), CONTROL_H);
+    let (row, _) = ui.allocate_exact_size(strip, Sense::hover());
+    ui.scope_builder(
+        UiBuilder::new()
+            .max_rect(row)
+            .layout(Layout::left_to_right(Align::Center)),
+        |ui| {
+            let items = [
+                Cell::new("All"),
+                Cell::with_count("Installed", counts.installed, t.muted),
+                Cell::with_count("Updates", counts.updates, t.warn),
+                Cell::with_count("Not installed", counts.not_installed, t.muted),
+                Cell::with_count("Roadmap", counts.planned, t.muted),
+            ];
+            let selected = filter_index(filter);
+            if let Some(clicked) = widgets::cells(ui, t, &items, selected) {
+                filter = filter_from_index(clicked);
             }
-            search_field(ui, t, state.search);
-        });
-    });
+
+            let right = ui.available_rect_before_wrap();
+            ui.scope_builder(
+                UiBuilder::new()
+                    .max_rect(right)
+                    .layout(Layout::right_to_left(Align::Center)),
+                |ui| {
+                    // Sort control, grid view only (the table sorts from its headers).
+                    if view == View::Grid {
+                        let combo = egui::ComboBox::from_id_salt("nucleus-sort")
+                            .selected_text(
+                                RichText::new(sort.0.label())
+                                    .font(fonts::body(13.0))
+                                    .color(t.ink),
+                            )
+                            .width(140.0);
+                        combo.show_ui(ui, |ui| {
+                            for key in [
+                                SortKey::Name,
+                                SortKey::Category,
+                                SortKey::Status,
+                                SortKey::Version,
+                            ] {
+                                if ui.selectable_label(sort.0 == key, key.label()).clicked()
+                                    && (sort.0 != key || sort.1)
+                                {
+                                    sort = if sort.0 == key {
+                                        (key, !sort.1)
+                                    } else {
+                                        (key, true)
+                                    };
+                                }
+                            }
+                        });
+                        ui.add_space(8.0);
+                        widgets::hud_inline(ui, "sort", t.faint, HUD_SIZE, 0.15);
+                        ui.add_space(12.0);
+                    }
+                    search_field(ui, t, state.search);
+                },
+            );
+        },
+    );
 
     *state.filter = filter;
     *state.sort = sort;
@@ -423,6 +461,15 @@ fn status_rank(status: &AppStatus) -> u8 {
 // Grid
 // ---------------------------------------------------------------------------
 
+/// The grid geometry for `count` cards in `available` width: how many columns
+/// fit, how wide each one ends up, and how many rows are needed.
+fn grid_geometry(available: f32, count: usize) -> (usize, f32, usize) {
+    let columns = ((available / CARD_MIN_W).floor() as usize).max(1);
+    let card_w = (available / columns as f32).floor().max(1.0);
+    let rows = count.div_ceil(columns);
+    (columns, card_w, rows)
+}
+
 /// A hairline lattice of cards: neighbours share their 1 px rules.
 fn grid(
     ui: &mut Ui,
@@ -433,9 +480,7 @@ fn grid(
     icons: &mut IconStore,
 ) {
     let available = ui.available_width();
-    let columns = ((available / CARD_MIN_W).floor() as usize).max(1);
-    let card_w = (available / columns as f32).floor().max(1.0);
-    let rows = list.len().div_ceil(columns);
+    let (columns, card_w, rows) = grid_geometry(available, list.len());
     let (area, _) = ui.allocate_exact_size(
         vec2(card_w * columns as f32, rows as f32 * CARD_H),
         Sense::hover(),
@@ -615,7 +660,7 @@ fn card_actions(
     actions: &mut Vec<(String, Action)>,
 ) {
     let id = card.id().to_string();
-    let main_width = (ui.available_width() - CONTROL_H - 8.0).max(120.0);
+    let main_width = (ui.available_width() - CONTROL_H - 8.0).clamp(120.0, 240.0);
 
     if running {
         if widgets::button(ui, t, "Stop", ButtonKind::Secondary, true, main_width).clicked() {
@@ -1140,5 +1185,60 @@ mod tests {
         assert_eq!(list[0].title(), "alpha");
         sort_cards(&mut list, (SortKey::Name, false));
         assert_eq!(list[0].title(), "Beta");
+    }
+
+    /// The control row must be pinned to its 34 px strip: a bare `with_layout`
+    /// used to swallow the page height and center itself, leaving the grid with
+    /// no room at all (it rendered as an empty page).
+    #[test]
+    fn toolbar_keeps_most_of_the_page_height() {
+        let ctx = egui::Context::default();
+        crate::ui::theme::install_fonts(&ctx);
+        let mut remaining = 0.0;
+        let output = ctx.run(Default::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let t = Tokens::dark();
+                let mut view = View::Grid;
+                let mut search = String::new();
+                let mut sort = (SortKey::Name, true);
+                let mut filter = Filter::All;
+                let mut dark = true;
+                let mut state = ViewState {
+                    view: &mut view,
+                    search: &mut search,
+                    sort: &mut sort,
+                    filter: &mut filter,
+                    dark: &mut dark,
+                };
+                let before = ui.available_height();
+                toolbar(ui, &t, &mut state, Counts::default());
+                remaining = ui.available_height();
+                assert!(remaining < before, "the toolbar allocated nothing");
+            });
+        });
+        assert!(
+            output.shapes.is_empty() || remaining > 200.0,
+            "toolbar left {remaining} px of page height; it should keep the page"
+        );
+    }
+
+    /// Cards must be laid out inside the visible area, not off-screen.
+    #[test]
+    fn grid_geometry_fits_the_available_width() {
+        let (columns, card_w, rows) = grid_geometry(1200.0, 4);
+        assert_eq!(columns, 3, "1200 px should fit three 320 px columns");
+        assert!(
+            card_w >= CARD_MIN_W,
+            "columns must respect the minimum width"
+        );
+        assert!(
+            card_w * columns as f32 <= 1200.0,
+            "columns must not overflow"
+        );
+        assert_eq!(rows, 2);
+
+        let (columns, card_w, _) = grid_geometry(300.0, 1);
+        assert_eq!(columns, 1, "a narrow page still shows one full column");
+        assert!(card_w > 0.0);
     }
 }

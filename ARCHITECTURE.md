@@ -97,6 +97,21 @@
 > release binary ~12.2 MB (fonts are embedded). M2 (catalogue, `.nucleusapp`, install/update) is
 > next; the details drawer and motion hooks from the reference are deliberately not replicated yet.
 
+> **Update #9 (2026-10-13) - own brand mark, legible icon tiles, calmer header.** Pixel-level
+> inspection of a live capture (the agent cannot read images, so the window is captured with
+> `PrintWindow` and classified against the token palette) found two real defects. **(1)** The control
+> row used a bare `with_layout(right_to_left)` which claimed the whole remaining height and
+> vertically centred itself, leaving the central panel empty; the header and toolbar now allocate an
+> explicit `CONTROL_H` strip and lay their contents out inside `scope_builder`. **(2)** App icons are
+> 512 px SVGs painted on their own dark plate (`#0B0E14`), so they read as dark slabs on a dark page:
+> `widgets::icon_tile` now frames every icon in a tinted well (`blend(sunken, app_colour, ~0.2)`) with
+> a `line_strong` hairline and an 8 % inset. The header is now a brand lockup - a 26 px orbit mark
+> (`assets/brand/mark.svg`, transparent plate, tuned for small sizes), the wordmark, an outlined
+> `v0.2.0` chip and a faint subtitle - with only the view switch and the theme toggle on the right,
+> so a single inverted block remains. `assets/brand/nucleus.svg` (plated) still supplies the window
+> icon via `ViewportBuilder::with_icon`. **61 tests** (29 launcher + 32 core); the toolbar height and
+> grid geometry are now covered by unit tests so the empty-page regression cannot come back.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---
