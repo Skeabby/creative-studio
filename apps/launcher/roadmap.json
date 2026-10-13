@@ -6,7 +6,7 @@
     "category": "image",
     "inspiredBy": "Photoshop",
     "emoji": "🖼️",
-    "color": "#5b8cff"
+    "color": "#6D5EF8"
   },
   {
     "id": "nucleus.vector",
@@ -15,7 +15,7 @@
     "category": "vector",
     "inspiredBy": "Illustrator",
     "emoji": "✒️",
-    "color": "#ff9f43"
+    "color": "#22D3EE"
   },
   {
     "id": "nucleus.video",
@@ -24,7 +24,7 @@
     "category": "video",
     "inspiredBy": "Premiere Pro",
     "emoji": "🎬",
-    "color": "#a55eea"
+    "color": "#F59E0B"
   },
   {
     "id": "nucleus.audio",
@@ -33,7 +33,7 @@
     "category": "audio",
     "inspiredBy": "Audition",
     "emoji": "🎧",
-    "color": "#2bcbba"
+    "color": "#34D399"
   },
   {
     "id": "nucleus.slides",
@@ -42,15 +42,6 @@
     "category": "layout",
     "inspiredBy": "PowerPoint",
     "emoji": "📊",
-    "color": "#fd9644"
-  },
-  {
-    "id": "nucleus.notes",
-    "name": "Notes",
-    "description": "Markdown notes, notebooks and full-text search.",
-    "category": "text",
-    "inspiredBy": "OneNote",
-    "emoji": "📝",
-    "color": "#26de81"
+    "color": "#F59E0B"
   }
 ]

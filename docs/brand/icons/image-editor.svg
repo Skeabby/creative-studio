@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <!-- Layer 3 (back) -->
+  <rect x="172" y="172" width="196" height="148" rx="16" fill="#E7ECF5" opacity="0.2" transform="rotate(-6 270 246)"/>
+  <!-- Layer 2 (mid) -->
+  <rect x="162" y="190" width="196" height="148" rx="16" fill="#E7ECF5" opacity="0.4" transform="rotate(3 260 264)"/>
+  <!-- Layer 1 (front) - photo frame -->
+  <rect x="144" y="200" width="224" height="168" rx="16" fill="#E7ECF5"/>
+  <!-- Sky area inside -->
+  <clipPath id="frame">
+    <rect x="144" y="200" width="224" height="168" rx="16"/>
+  </clipPath>
+  <rect x="144" y="200" width="224" height="90" fill="#22D3EE" clip-path="url(#frame)"/>
+  <!-- Sun -->
+  <circle cx="320" cy="235" r="22" fill="#F59E0B" clip-path="url(#frame)"/>
+  <!-- Mountain -->
+  <polygon points="144,368 220,270 280,320 330,262 368,368" fill="#0B0E14" clip-path="url(#frame)"/>
+  <!-- Ground -->
+  <rect x="144" y="335" width="224" height="33" fill="#6D5EF8" clip-path="url(#frame)" opacity="0.6"/>
+</svg>

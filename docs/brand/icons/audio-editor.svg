@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <!-- Equalizer bars - 7 bars, symmetric, varying heights -->
+  <rect x="118" y="246" width="36" height="80" rx="18" fill="#E7ECF5"/>
+  <rect x="170" y="196" width="36" height="130" rx="18" fill="#E7ECF5"/>
+  <rect x="222" y="156" width="36" height="170" rx="18" fill="#34D399"/>
+  <rect x="274" y="186" width="36" height="140" rx="18" fill="#E7ECF5"/>
+  <rect x="326" y="216" width="36" height="110" rx="18" fill="#E7ECF5"/>
+  <rect x="378" y="256" width="36" height="70" rx="18" fill="#E7ECF5" opacity="0.5"/>
+  <!-- Reflection/shadow bars -->
+  <rect x="118" y="336" width="36" height="30" rx="18" fill="#E7ECF5" opacity="0.15"/>
+  <rect x="170" y="336" width="36" height="30" rx="18" fill="#E7ECF5" opacity="0.15"/>
+  <rect x="222" y="336" width="36" height="30" rx="18" fill="#E7ECF5" opacity="0.15"/>
+  <rect x="274" y="336" width="36" height="30" rx="18" fill="#E7ECF5" opacity="0.15"/>
+  <rect x="326" y="336" width="36" height="30" rx="18" fill="#E7ECF5" opacity="0.15"/>
+</svg>

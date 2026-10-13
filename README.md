@@ -55,12 +55,12 @@ different route:
 |-----|--------|--------------|
 | **Nucleus launcher** | alpha | Every app in one window: search, category groups, sortable table, Ctrl+K palette, detail panel, Open / Stop, themes. |
 | **PDF Workbench** | beta | Merge, reorder, rotate, delete pages, undo/redo, save/open projects, export. |
+| **Notes** | alpha | Markdown notes, notebooks with undo/redo and full-text search. |
 | Image Editor | planned | Layers, masks, non-destructive adjustments and export. |
 | Vector Editor | planned | Bézier paths, shapes and vector export. |
 | Video Editor | planned | Timeline editing, colour and audio mixing. |
 | Audio Editor | planned | Waveform editing, effects chain and mastering. |
 | Slides | planned | Decks with layouts, transitions and present mode. |
-| Notes | planned | Markdown notes, notebooks and full-text search. |
 
 ## Quickstart (Windows)
 
@@ -114,6 +114,7 @@ packages/pdf          # @nucleus/pdf command pack (import / rotate / move / remo
 packages/launcher     # app discovery, manifests, process runtime, windows, CLI
 apps/launcher         # the launcher window (grid/table UI + /api/apps)
 apps/pdf-workbench    # app #1: local HTTP server + web UI
+apps/notes            # app #2: Markdown notes on the command bus
 schemas/              # JSON Schema - the source of truth for codegen
 tools/                # codegen, validators, screenshot capture
 shell/                # native window host (WinForms + WebView2)
@@ -147,8 +148,8 @@ command bus as the GUI, so the whole suite is scriptable *and* promptable.
 ## Roadmap
 
 The phased plan, design decisions and risks live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-Short version: launcher + first app (**done**) → more apps → JSON-RPC frontend → optional Tauri
-packaging for cross-platform native bundles.
+Short version: launcher + first three apps (**done**) → more apps → JSON-RPC frontend → optional
+Tauri packaging for cross-platform native bundles.
 
 ## Contributing
 

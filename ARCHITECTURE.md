@@ -51,6 +51,22 @@
 > `tools/screenshot.mjs`'s DOM self-check was updated and a second hero (`docs/screenshot-table.png`)
 > is captured. Assets (logo, wordmark, app icons) are still pending.
 
+> **Update #6 (2026-10-13) — Notes ships + brand assets.** App #2 is real: **Notes**
+> (`apps/notes`, `nucleus.notes`, category `text`, alpha, inspired by OneNote) — a Markdown
+> notebook with notebooks/folders, undo/redo and full-text search, running as a local server app
+> with `readyPath /api/state`. It was delivered as a full design→build handoff (code + assets),
+> then re-verified line-by-line against `@nucleus/core`'s actual API, recompiled under the repo's
+> strict TS config and smoke-tested over HTTP before merge. The roadmap now dedupes discovered
+> apps via `mergeRoadmap` (`packages/launcher/src/roadmap.ts`), so a real app hides its planned
+> card instead of listing twice. Brand assets landed in `docs/brand/` (logo PNG + `nucleus.svg`)
+> and `docs/brand/icons/` (7 recolored SVG icons on the token palette: INK `#0B0E14`, SURFACE
+> `#151B26`, TEXT `#E7ECF5`, ACCENT `#6D5EF8`, CYAN `#22D3EE`, RUN `#34D399`, AMBER `#F59E0B`);
+> every app icon is token-native. **Provenance strip:** the handoff packed C2PA metadata
+> (81-89 % of SVG weight + a `caBX` chunk in the PNG) — `tools/strip-c2pa.mjs` removes it from
+> SVGs (`<metadata>` + `xmlns:c2pa`) and PNGs (text/`eXIf`/`caBX` chunks, CRCs re-verified) for
+> anything committed to the repo. The short TikTok promo clips keep their provenance labels on
+> purpose (platform AI-labeling rules) and live outside the public checkout.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---

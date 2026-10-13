@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <!-- Bezier curve -->
+  <path d="M130 350 C 130 200, 256 160, 256 256 C 256 352, 382 312, 382 162"
+        fill="none" stroke="#E7ECF5" stroke-width="18" stroke-linecap="round"/>
+  <!-- Anchor point 1 (start) -->
+  <rect x="108" y="328" width="44" height="44" rx="8" fill="#E7ECF5"/>
+  <!-- Control handle line 1 -->
+  <line x1="130" y1="350" x2="130" y2="200" stroke="#E7ECF5" stroke-width="4" stroke-opacity="0.3" stroke-dasharray="6,6"/>
+  <!-- Control handle dot 1 -->
+  <circle cx="130" cy="200" r="10" fill="none" stroke="#E7ECF5" stroke-width="5" opacity="0.5"/>
+  <!-- Anchor point 2 (mid) -->
+  <rect x="234" y="234" width="44" height="44" rx="8" fill="#6D5EF8"/>
+  <!-- Control handle line 2a -->
+  <line x1="256" y1="256" x2="256" y2="160" stroke="#E7ECF5" stroke-width="4" stroke-opacity="0.3" stroke-dasharray="6,6"/>
+  <circle cx="256" cy="160" r="10" fill="none" stroke="#E7ECF5" stroke-width="5" opacity="0.5"/>
+  <!-- Control handle line 2b -->
+  <line x1="256" y1="256" x2="256" y2="352" stroke="#E7ECF5" stroke-width="4" stroke-opacity="0.3" stroke-dasharray="6,6"/>
+  <circle cx="256" cy="352" r="10" fill="none" stroke="#E7ECF5" stroke-width="5" opacity="0.5"/>
+  <!-- Anchor point 3 (end) -->
+  <rect x="360" y="140" width="44" height="44" rx="8" fill="#E7ECF5"/>
+</svg>

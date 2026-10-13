@@ -1,12 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <defs>
-    <linearGradient id="p" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ff8a65"/>
-      <stop offset="1" stop-color="#e2542c"/>
-    </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#p)"/>
-  <path d="M20 16h14l10 10v22a2 2 0 0 1-2 2H20a2 2 0 0 1-2-2V18a2 2 0 0 1 2-2z" fill="#ffffff" opacity="0.95"/>
-  <path d="M34 16l10 10H36a2 2 0 0 1-2-2z" fill="#ffffff" opacity="0.6"/>
-  <text x="32" y="45" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#e2542c">PDF</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <!-- Back page -->
+  <rect x="175" y="155" width="170" height="210" rx="14" fill="#E7ECF5" opacity="0.3"/>
+  <!-- Front page body -->
+  <path d="M148 170 L148 370 Q148 384 162 384 L322 384 Q336 384 336 370 L336 210 L296 170 Z" fill="#E7ECF5"/>
+  <!-- Corner fold -->
+  <path d="M296 170 L336 210 L296 210 Z" fill="#6D5EF8" opacity="0.4"/>
+  <line x1="296" y1="170" x2="296" y2="210" stroke="#6D5EF8" stroke-width="2" opacity="0.3"/>
+  <!-- Text lines -->
+  <rect x="178" y="240" width="120" height="10" rx="5" fill="#0B0E14" opacity="0.25"/>
+  <rect x="178" y="262" width="100" height="10" rx="5" fill="#0B0E14" opacity="0.25"/>
+  <rect x="178" y="284" width="110" height="10" rx="5" fill="#0B0E14" opacity="0.25"/>
+  <rect x="178" y="306" width="85" height="10" rx="5" fill="#0B0E14" opacity="0.25"/>
 </svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <!-- Projector stand / pole -->
+  <rect x="249" y="340" width="14" height="64" rx="7" fill="white" opacity="0.4"/>
+  <!-- Base -->
+  <rect x="200" y="396" width="112" height="14" rx="7" fill="white" opacity="0.4"/>
+  <!-- Main slide screen -->
+  <rect x="120" y="148" width="272" height="186" rx="16" fill="#E7ECF5"/>
+  <!-- Slide content - title bar -->
+  <rect x="144" y="170" width="180" height="16" rx="8" fill="#0B0E14" opacity="0.22"/>
+  <!-- Slide content - image placeholder -->
+  <rect x="144" y="202" width="106" height="80" rx="8" fill="#0B0E14" opacity="0.12"/>
+  <!-- Mountain in image placeholder -->
+  <polygon points="144,282 190,230 236,282" fill="#6D5EF8" opacity="0.35" clip-path="url(#slide-img)"/>
+  <clipPath id="slide-img">
+    <rect x="144" y="202" width="106" height="80" rx="8"/>
+  </clipPath>
+  <!-- Slide content - text lines right -->
+  <rect x="264" y="210" width="104" height="9" rx="4" fill="#0B0E14" opacity="0.2"/>
+  <rect x="264" y="228" width="88" height="9" rx="4" fill="#0B0E14" opacity="0.2"/>
+  <rect x="264" y="246" width="96" height="9" rx="4" fill="#0B0E14" opacity="0.2"/>
+  <rect x="264" y="264" width="72" height="9" rx="4" fill="#0B0E14" opacity="0.2"/>
+  <!-- Bottom dots (slide progress) -->
+  <circle cx="236" cy="310" r="7" fill="#0B0E14" opacity="0.2"/>
+  <circle cx="256" cy="310" r="7" fill="#6D5EF8" opacity="0.8"/>
+  <circle cx="276" cy="310" r="7" fill="#0B0E14" opacity="0.2"/>
+</svg>

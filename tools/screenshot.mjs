@@ -80,6 +80,17 @@ async function main() {
   // Give the SPA a moment to finish its first fetch + paint.
   await sleep(1500);
 
+  // Optional pre-capture interaction: SS_CLICK="<css selector>" switches the
+  // launcher view (grid/table) or theme before the shot.
+  if (process.env.SS_CLICK) {
+    const clicked = await send("Runtime.evaluate", {
+      returnByValue: true,
+      expression: `(() => { const el = document.querySelector(${JSON.stringify(process.env.SS_CLICK)}); if (!el) return "missing:" + ${JSON.stringify(process.env.SS_CLICK)}; el.click(); return "clicked " + el.tagName; })()`,
+    });
+    console.log("pre-click:", clicked.result?.result?.value);
+    await sleep(1000);
+  }
+
   // Self-check: prove the captured page actually rendered content.
   const probe = await send("Runtime.evaluate", {
     returnByValue: true,
