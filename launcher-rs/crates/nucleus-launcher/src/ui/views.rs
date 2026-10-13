@@ -1,37 +1,96 @@
-//! The craft-launcher-style views: header, card grid, sortable table and the
-//! "coming soon" section.
+//! The views: header bar, filter toolbar, card grid, sortable table and the
+//! status footer.
+//!
+//! Layout rules mirror the reference design language: a 48 px header, a 34 px
+//! control row, a hairline grid of 320 × 280 cards (no gaps — neighbours share
+//! their rules), and a 34 px status footer.
 
-use egui::{Color32, RichText, Sense, Stroke, StrokeKind, Ui};
+use egui::{
+    Align, Align2, Color32, CornerRadius, Layout, Margin, Pos2, Rect, Response, RichText, Sense,
+    Shape, Stroke, Ui, UiBuilder, pos2, vec2,
+};
 
-use nucleus_launcher_core::{AppStatus, Card};
+use nucleus_launcher_core::{AppStatus, Card, derive_status};
 
 use super::icons::IconStore;
-use super::theme::{self, ACCENT, AMBER, Palette, RUN, fonts};
-use super::widgets::{self, Tag, category_color};
+use super::theme::{CONTROL_H, HUD_SIZE, Tokens, fonts};
+use super::widgets::{self, ButtonKind, Cell};
 use crate::runtime::Runtime;
 
-/// Which main view is active.
+/// Minimum card width; the column count is derived from the available width.
+const CARD_MIN_W: f32 = 320.0;
+/// Fixed card height.
+const CARD_H: f32 = 280.0;
+/// Padding inside a card.
+const CARD_PAD: f32 = 20.0;
+/// Height of the card's top strip (number tab + label).
+const STRIP_H: f32 = 40.0;
+/// Table header / row heights.
+const TABLE_HEADER_H: f32 = 42.0;
+const TABLE_ROW_H: f32 = 62.0;
+/// Table thumbnail size.
+const TABLE_THUMB: f32 = 38.0;
+/// Fixed table column widths (the app column takes the remainder).
+const COL_CATEGORY: f32 = 110.0;
+const COL_STATUS: f32 = 176.0;
+const COL_VERSION: f32 = 90.0;
+const COL_SOURCE: f32 = 110.0;
+const COL_ACTIONS: f32 = 180.0;
+
+/// Which layout is active.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum View {
     Grid,
     Table,
 }
 
-/// Sortable table column.
+impl View {
+    fn label(self) -> &'static str {
+        match self {
+            View::Grid => "Grid",
+            View::Table => "Table",
+        }
+    }
+}
+
+/// A sortable table column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortKey {
     Name,
     Category,
-    Version,
     Status,
+    Version,
 }
 
-/// Counts shown in the header and footer.
+impl SortKey {
+    fn label(self) -> &'static str {
+        match self {
+            SortKey::Name => "App",
+            SortKey::Category => "Category",
+            SortKey::Status => "Status",
+            SortKey::Version => "Version",
+        }
+    }
+}
+
+/// The filter row selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Filter {
+    All,
+    Installed,
+    Updates,
+    NotInstalled,
+    Planned,
+}
+
+/// Totals shown in the filter row.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Counts {
     pub all: usize,
     pub installed: usize,
-    pub upcoming: usize,
+    pub updates: usize,
+    pub not_installed: usize,
+    pub planned: usize,
     pub running: usize,
 }
 
@@ -40,9 +99,10 @@ pub struct Counts {
 pub enum Action {
     Open,
     Stop,
+    Reveal,
 }
 
-/// Node availability, disclosed honestly in the header.
+/// Node availability, disclosed honestly.
 #[derive(Debug, Clone)]
 pub enum NodeFact {
     Found(String),
@@ -60,375 +120,296 @@ impl Facts {
     pub fn node_ok(&self) -> bool {
         matches!(self.node, NodeFact::Found(_))
     }
+
+    pub fn node_path(&self) -> Option<&str> {
+        match &self.node {
+            NodeFact::Found(path) => Some(path),
+            NodeFact::Missing => None,
+        }
+    }
 }
 
-/// The top bar: brand, search, view + theme switches.
-pub fn header(
-    ui: &mut Ui,
-    search: &mut String,
-    view: &mut View,
-    dark: &mut bool,
-    palette: Palette,
-) {
-    ui.horizontal(|ui| {
-        // Brand.
-        ui.add_space(2.0);
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(22.0, 22.0), Sense::hover());
-        ui.painter().circle_filled(rect.center(), 6.0, ACCENT);
-        ui.label(
-            RichText::new("Nucleus")
-                .size(19.0)
-                .color(palette.text)
-                .font(fonts::bold(19.0)),
-        );
-        ui.label(
-            RichText::new("app suite launcher")
-                .size(11.0)
-                .color(palette.muted)
-                .font(fonts::body(11.0)),
-        );
-
-        ui.add_space(24.0);
-        // Search.
-        widgets::search_field(ui, search);
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Theme toggle.
-            let sun = if *dark { "☀" } else { "🌙" };
-            if widgets::icon_button(ui, sun, false).clicked() {
-                *dark = !*dark;
-            }
-            // View switch (grid | table).
-            if widgets::icon_button(ui, "▦", *view == View::Grid).clicked() {
-                *view = View::Grid;
-            }
-            ui.add_space(4.0);
-            if widgets::icon_button(ui, "≡", *view == View::Table).clicked() {
-                *view = View::Table;
-            }
-        });
-    });
+/// The app-level view state the views read/mutate this frame. Every field is a
+/// mutable reference so the views can write straight back into the app.
+pub struct ViewState<'a> {
+    pub view: &'a mut View,
+    pub search: &'a mut String,
+    pub sort: &'a mut (SortKey, bool),
+    pub filter: &'a mut Filter,
+    pub dark: &'a mut bool,
 }
 
-/// Whether a card matches the current search query.
+/// Does a card match the search query?
 pub fn matches(query: &str, card: &Card) -> bool {
     if query.trim().is_empty() {
         return true;
     }
-    let q = query.to_lowercase();
-    let hay = [
+    let needle = query.to_lowercase();
+    let parts = [
         Some(card.id().to_string()),
         Some(card.title().to_string()),
         card.description().map(str::to_string),
         card.category().map(|c| c.as_str().to_string()),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join(" ")
-    .to_lowercase();
-    hay.contains(&q)
+    ];
+    let haystack = parts
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    haystack.contains(&needle)
 }
 
-fn card_category(card: &Card) -> Option<nucleus_launcher_core::Category> {
+/// The status a card presents, ignoring the running state.
+fn status_of(card: &Card) -> AppStatus {
     match card {
-        Card::App(app) => app.manifest.category,
-        Card::Planned(entry) => entry.category,
+        Card::App(app) => derive_status(app.installed.as_ref(), app.catalog.as_ref(), false),
+        Card::Planned(_) => AppStatus::NotInstalled,
     }
 }
 
-fn card_color(card: &Card, palette: Palette) -> Color32 {
-    match card {
-        Card::App(app) => category_color(app.manifest.category),
-        Card::Planned(entry) => entry
-            .color
-            .as_deref()
-            .and_then(theme::hex_color)
-            .unwrap_or(palette.muted),
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+/// The 48 px top bar: wordmark on the left, view switch and theme on the right.
+pub fn header(ui: &mut Ui, t: &Tokens, state: &mut ViewState<'_>) {
+    let mut view = *state.view;
+    let mut dark = *state.dark;
+
+    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+        // Brand: an accent block plus the wordmark.
+        let (mark, _) = ui.allocate_exact_size(vec2(12.0, 12.0), Sense::hover());
+        ui.painter().rect_filled(mark, CornerRadius::ZERO, t.accent);
+        ui.add_space(2.0);
+        ui.label(
+            RichText::new("Nucleus")
+                .font(fonts::display(17.0))
+                .color(t.ink_strong),
+        );
+        ui.add_space(6.0);
+        widgets::hud_inline(ui, "app suite launcher", t.faint, HUD_SIZE, 0.15);
+
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            // Theme toggle.
+            let glyph = if dark { "☀" } else { "☾" };
+            if widgets::glyph_button(ui, t, glyph, true).clicked() {
+                dark = !dark;
+            }
+            widgets::header_rule(ui, t);
+            // View switch.
+            if widgets::nav_link(ui, t, View::Table.label(), view == View::Table).clicked() {
+                view = View::Table;
+            }
+            if widgets::nav_link(ui, t, View::Grid.label(), view == View::Grid).clicked() {
+                view = View::Grid;
+            }
+            widgets::header_rule(ui, t);
+            widgets::tag(ui, "Launcher", t.invert_bg, t.invert_fg);
+            ui.add_space(6.0);
+            widgets::hud_inline(ui, "Nucleus app suite", t.muted, HUD_SIZE, 0.15);
+        });
+    });
+
+    *state.view = view;
+    *state.dark = dark;
+}
+
+/// The 34 px control row: filter cells on the left, search + sort on the right.
+pub fn toolbar(ui: &mut Ui, t: &Tokens, state: &mut ViewState<'_>, counts: Counts) {
+    let mut filter = *state.filter;
+    let mut sort = *state.sort;
+    let view = *state.view;
+
+    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+        let items = [
+            Cell::new("All"),
+            Cell::with_count("Installed", counts.installed, t.muted),
+            Cell::with_count("Updates", counts.updates, t.warn),
+            Cell::with_count("Not installed", counts.not_installed, t.muted),
+            Cell::with_count("Roadmap", counts.planned, t.muted),
+        ];
+        let selected = filter_index(filter);
+        if let Some(clicked) = widgets::cells(ui, t, &items, selected) {
+            filter = filter_from_index(clicked);
+        }
+
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            // Sort control, grid view only (the table sorts from its headers).
+            if view == View::Grid {
+                let combo = egui::ComboBox::from_id_salt("nucleus-sort")
+                    .selected_text(
+                        RichText::new(sort.0.label())
+                            .font(fonts::body(13.0))
+                            .color(t.ink),
+                    )
+                    .width(140.0);
+                combo.show_ui(ui, |ui| {
+                    for key in [
+                        SortKey::Name,
+                        SortKey::Category,
+                        SortKey::Status,
+                        SortKey::Version,
+                    ] {
+                        if ui.selectable_label(sort.0 == key, key.label()).clicked()
+                            && (sort.0 != key || sort.1)
+                        {
+                            sort = if sort.0 == key {
+                                (key, !sort.1)
+                            } else {
+                                (key, true)
+                            };
+                        }
+                    }
+                });
+                ui.add_space(8.0);
+                widgets::hud_inline(ui, "sort", t.faint, HUD_SIZE, 0.15);
+                ui.add_space(12.0);
+            }
+            search_field(ui, t, state.search);
+        });
+    });
+
+    *state.filter = filter;
+    *state.sort = sort;
+}
+
+fn filter_index(filter: Filter) -> usize {
+    match filter {
+        Filter::All => 0,
+        Filter::Installed => 1,
+        Filter::Updates => 2,
+        Filter::NotInstalled => 3,
+        Filter::Planned => 4,
     }
 }
 
-/// The app-level view state the views read/mutate this frame.
-pub struct ViewState<'a> {
-    pub view: View,
-    pub search: &'a mut String,
-    pub sort: &'a mut (SortKey, bool),
+fn filter_from_index(index: usize) -> Filter {
+    match index {
+        1 => Filter::Installed,
+        2 => Filter::Updates,
+        3 => Filter::NotInstalled,
+        4 => Filter::Planned,
+        _ => Filter::All,
+    }
 }
 
-/// The main scrolling area: grid or table of apps, then "coming soon".
+/// The search input: a recessed well with a hairline border.
+fn search_field(ui: &mut Ui, t: &Tokens, query: &mut String) -> Response {
+    ui.add_sized(
+        vec2(200.0, CONTROL_H),
+        egui::TextEdit::singleline(query)
+            .font(fonts::body(13.5))
+            .hint_text(RichText::new("Search apps").color(t.faint))
+            .margin(Margin::symmetric(10, 0))
+            .vertical_align(Align::Center),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Main area
+// ---------------------------------------------------------------------------
+
+/// The central scrolling area: a card grid or a sortable table.
 pub fn main_area(
     ui: &mut Ui,
+    t: &Tokens,
     cards: &[Card],
     runtime: &Runtime,
     state: &mut ViewState<'_>,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
-    palette: Palette,
 ) {
-    let view = state.view;
-    let search = &mut *state.search;
-    let sort = &mut *state.sort;
-    egui::ScrollArea::vertical()
-        .id_salt("main-area")
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            ui.add_space(4.0);
+    let filter = *state.filter;
+    let search: String = state.search.clone();
+    let sort = *state.sort;
 
-            let apps: Vec<&Card> = cards
-                .iter()
-                .filter(|card| matches(search, card) && card.as_app().is_some())
-                .collect();
-            let planned: Vec<&Card> = cards
-                .iter()
-                .filter(|card| matches(search, card) && card.as_app().is_none())
-                .collect();
-
-            if apps.is_empty() && planned.is_empty() {
-                ui.add_space(48.0);
-                ui.vertical_centered(|ui| {
-                    ui.label(
-                        RichText::new("No apps match your search.")
-                            .size(14.0)
-                            .color(palette.muted)
-                            .font(fonts::body(14.0)),
-                    );
-                });
-                return;
-            }
-
-            if !apps.is_empty() {
-                widgets::section_header(ui, "Apps", &format!("{} found", apps.len()), palette);
-                ui.add_space(4.0);
-                match view {
-                    View::Grid => grid(ui, &apps, runtime, actions, icons, palette),
-                    View::Table => table(ui, &apps, runtime, actions, sort, icons, palette),
+    let mut list: Vec<&Card> = Vec::new();
+    for card in cards {
+        if !matches(&search, card) {
+            continue;
+        }
+        match card {
+            Card::App(app) => {
+                let status = derive_status(
+                    app.installed.as_ref(),
+                    app.catalog.as_ref(),
+                    runtime.is_running(card.id()),
+                );
+                let keep = match filter {
+                    Filter::All => true,
+                    Filter::Installed => status.is_installed(),
+                    Filter::Updates => status == AppStatus::UpdateAvailable,
+                    Filter::NotInstalled => !status.is_installed(),
+                    Filter::Planned => false,
+                };
+                if keep {
+                    list.push(card);
                 }
             }
-
-            if !planned.is_empty() {
-                ui.add_space(20.0);
-                widgets::section_header(
-                    ui,
-                    "Coming soon",
-                    &format!("{} in the roadmap", planned.len()),
-                    palette,
-                );
-                ui.add_space(4.0);
-                for card in planned {
-                    planned_row(ui, card, palette);
+            Card::Planned(_) => {
+                if matches!(filter, Filter::All | Filter::Planned) {
+                    list.push(card);
                 }
             }
-        });
-}
-
-/// Icons for a real app card, or a coloured letter tile.
-fn app_icon(ui: &mut Ui, icons: &mut IconStore, card: &Card, size: f32, palette: Palette) {
-    let letter = card.title();
-    let color = card_color(card, palette);
-    let mut texture = None;
-    if let Card::App(app) = card
-        && let Some(icon) = &app.manifest.icon
-    {
-        let path = app.dir.join(icon);
-        if path.exists() {
-            texture = icons.load(ui.ctx(), app.id(), &path, size);
         }
     }
-    widgets::icon_tile(ui, texture, letter, color, size, palette);
-}
 
-/// One card in the grid (craft-launcher style).
-fn card(
-    ui: &mut Ui,
-    card: &Card,
-    runtime: &Runtime,
-    actions: &mut Vec<(String, Action)>,
-    icons: &mut IconStore,
-    palette: Palette,
-) {
-    let id = card.id().to_string();
-    let running = runtime.is_running(&id);
-    let status = if running {
-        AppStatus::Running
-    } else {
-        status_of(card)
-    };
+    if *state.view == View::Table {
+        sort_cards(&mut list, sort);
+    }
 
-    let frame = egui::Frame::NONE
-        .fill(palette.surface)
-        .corner_radius(12)
-        .inner_margin(egui::Margin::same(14));
-    let response = frame.show(ui, |ui| {
-        ui.set_min_width(240.0);
-        ui.set_width(ui.available_width());
-        ui.vertical(|ui| {
-            // Top: icon + identity.
-            ui.horizontal(|ui| {
-                app_icon(ui, icons, card, 46.0, palette);
-                ui.vertical(|ui| {
-                    ui.label(
-                        RichText::new(card.title())
-                            .size(15.0)
-                            .color(palette.text)
-                            .font(fonts::semibold(15.0)),
-                    );
-                    ui.horizontal(|ui| {
-                        if let Some(category) = card_category(card) {
-                            let cc = category_color(Some(category));
-                            ui.add(Tag {
-                                text: category.as_str(),
-                                color: cc,
-                                palette,
-                            });
-                        }
-                        if let Card::App(app) = card {
-                            ui.add(Tag {
-                                text: &app.manifest.version,
-                                color: palette.muted,
-                                palette,
-                            });
-                        }
-                    });
-                });
-            });
-
-            // Description.
-            if let Some(description) = card.description()
-                && !description.is_empty()
-            {
-                ui.add_space(6.0);
-                ui.label(
-                    RichText::new(description)
-                        .size(12.0)
-                        .color(palette.muted)
-                        .font(fonts::body(12.0)),
-                );
-            }
-
-            // Footer: status + action.
-            ui.add_space(6.0);
-            ui.separator();
-            ui.add_space(2.0);
-            ui.horizontal(|ui| {
-                ui.add(widgets::StatusBadge { status });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    action_button(ui, card, running, actions, palette);
-                });
-            });
+    if list.is_empty() {
+        ui.add_space(40.0);
+        ui.vertical_centered(|ui| {
+            widgets::hud(ui, "No apps match", t.faint);
         });
-    });
-
-    // Hover border over the painted card.
-    if response.response.hovered() {
-        ui.painter().rect(
-            response.response.rect,
-            egui::CornerRadius::same(12),
-            Color32::TRANSPARENT,
-            Stroke::new(1.0_f32, theme::hover_border(&palette).gamma_multiply(0.5)),
-            StrokeKind::Inside,
-        );
-    }
-}
-
-fn status_of(card: &Card) -> AppStatus {
-    match card {
-        Card::App(app) => nucleus_launcher_core::derive_status(
-            app.installed.as_ref(),
-            app.catalog.as_ref(),
-            false,
-        ),
-        Card::Planned(_) => AppStatus::NotInstalled,
-    }
-}
-
-/// The primary/secondary action per card.
-fn action_button(
-    ui: &mut Ui,
-    card: &Card,
-    running: bool,
-    actions: &mut Vec<(String, Action)>,
-    palette: Palette,
-) {
-    let id = card.id().to_string();
-    if running {
-        if widgets::ghost_button(ui, "Stop", RUN).clicked() {
-            actions.push((id, Action::Stop));
-        }
         return;
     }
-    match card {
-        Card::App(_) => match status_of(card) {
-            AppStatus::Installed | AppStatus::UpdateAvailable => {
-                if widgets::primary_button(ui, "Open", true, ACCENT).clicked() {
-                    actions.push((id, Action::Open));
-                }
-            }
-            AppStatus::NotInstalled => {
-                widgets::primary_button(ui, "Install", false, ACCENT);
-            }
-            AppStatus::Unavailable | AppStatus::Running => {
-                widgets::primary_button(ui, "—", false, palette.muted);
-            }
-        },
-        Card::Planned(_) => {
-            widgets::primary_button(ui, "Install", false, ACCENT);
+
+    match *state.view {
+        View::Grid => {
+            egui::ScrollArea::vertical()
+                .id_salt("nucleus-grid")
+                .auto_shrink([false, false])
+                .show(ui, |ui| grid(ui, t, &list, runtime, actions, icons));
+        }
+        View::Table => {
+            egui::ScrollArea::both()
+                .id_salt("nucleus-table")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    table(ui, t, &list, runtime, actions, icons, state.sort)
+                });
         }
     }
 }
 
-/// Responsive card grid.
-fn grid(
-    ui: &mut Ui,
-    apps: &[&Card],
-    runtime: &Runtime,
-    actions: &mut Vec<(String, Action)>,
-    icons: &mut IconStore,
-    palette: Palette,
-) {
-    const CARD_MIN: f32 = 280.0;
-    const GAP: f32 = 12.0;
-    let columns = ((ui.available_width() - GAP) / (CARD_MIN + GAP))
-        .max(1.0)
-        .floor() as usize;
-
-    egui::Grid::new("apps-grid")
-        .num_columns(columns)
-        .spacing(egui::vec2(GAP, GAP))
-        .show(ui, |ui| {
-            for (index, app_card) in apps.iter().enumerate() {
-                card(ui, app_card, runtime, actions, icons, palette);
-                if (index + 1) % columns == 0 && index + 1 < apps.len() {
-                    ui.end_row();
-                }
-            }
-            // End the last row for a full-width trailing border.
-            if !apps.is_empty() {
-                ui.end_row();
-            }
-        });
-}
-
-/// Sort the current app list for the table view.
-fn sort_apps(apps: &mut Vec<&Card>, sort: &(SortKey, bool)) {
-    let (key, asc) = sort;
-    apps.sort_by(|a, b| {
-        let ordering = match key {
+fn sort_cards(list: &mut [&Card], sort: (SortKey, bool)) {
+    let (key, ascending) = sort;
+    list.sort_by(|a, b| {
+        let order = match key {
             SortKey::Name => a.title().to_lowercase().cmp(&b.title().to_lowercase()),
-            SortKey::Category => card_category(a)
-                .map(|c| c.as_str())
-                .unwrap_or("")
-                .cmp(card_category(b).map(|c| c.as_str()).unwrap_or("")),
-            SortKey::Version => match (a, b) {
-                (Card::App(a), Card::App(b)) => a.manifest.version.cmp(&b.manifest.version),
-                _ => a.title().cmp(b.title()),
-            },
-            SortKey::Status => status_order(&status_of(a)).cmp(&status_order(&status_of(b))),
+            SortKey::Category => category_str(a).cmp(category_str(b)),
+            SortKey::Status => status_rank(&status_of(a)).cmp(&status_rank(&status_of(b))),
+            SortKey::Version => version_of(a).cmp(version_of(b)),
         };
-        if *asc { ordering } else { ordering.reverse() }
+        if ascending { order } else { order.reverse() }
     });
 }
 
-fn status_order(status: &AppStatus) -> u8 {
+fn category_str(card: &Card) -> &'static str {
+    card.category().map(|c| c.as_str()).unwrap_or("")
+}
+
+fn version_of(card: &Card) -> &str {
+    match card {
+        Card::App(app) => app.manifest.version.as_str(),
+        Card::Planned(_) => "",
+    }
+}
+
+fn status_rank(status: &AppStatus) -> u8 {
     match status {
         AppStatus::Running => 0,
         AppStatus::Installed => 1,
@@ -438,257 +419,726 @@ fn status_order(status: &AppStatus) -> u8 {
     }
 }
 
-/// The sortable table view.
-fn table(
+// ---------------------------------------------------------------------------
+// Grid
+// ---------------------------------------------------------------------------
+
+/// A hairline lattice of cards: neighbours share their 1 px rules.
+fn grid(
     ui: &mut Ui,
-    apps_in: &[&Card],
+    t: &Tokens,
+    list: &[&Card],
     runtime: &Runtime,
     actions: &mut Vec<(String, Action)>,
-    sort: &mut (SortKey, bool),
     icons: &mut IconStore,
-    palette: Palette,
 ) {
-    let mut apps = apps_in.to_vec();
-    sort_apps(&mut apps, sort);
+    let available = ui.available_width();
+    let columns = ((available / CARD_MIN_W).floor() as usize).max(1);
+    let card_w = (available / columns as f32).floor().max(1.0);
+    let rows = list.len().div_ceil(columns);
+    let (area, _) = ui.allocate_exact_size(
+        vec2(card_w * columns as f32, rows as f32 * CARD_H),
+        Sense::hover(),
+    );
 
-    egui::Frame::NONE
-        .fill(palette.surface)
-        .corner_radius(10)
-        .inner_margin(egui::Margin::symmetric(10, 4))
-        .show(ui, |ui| {
-            egui::Grid::new("apps-table")
-                .num_columns(5)
-                .spacing(egui::vec2(18.0, 6.0))
-                .striped(palette.bg.r() >= 128)
-                .show(ui, |ui| {
-                    for (key, label) in [
-                        (SortKey::Name, "Name"),
-                        (SortKey::Category, "Category"),
-                        (SortKey::Version, "Version"),
-                        (SortKey::Status, "Status"),
-                    ] {
-                        let arrow = if sort.0 == key {
-                            if sort.1 { " ↑" } else { " ↓" }
-                        } else {
-                            ""
-                        };
-                        if ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new(format!("{label}{arrow}"))
-                                        .size(12.0)
-                                        .color(if sort.0 == key { ACCENT } else { palette.muted })
-                                        .font(fonts::semibold(12.0)),
-                                )
-                                .frame(false)
-                                .corner_radius(4),
-                            )
-                            .clicked()
-                        {
-                            if sort.0 == key {
-                                sort.1 = !sort.1;
-                            } else {
-                                *sort = (key, true);
-                            }
-                        }
-                        ui.end_row();
-                    }
-                    for &card in &apps {
-                        row(ui, card, runtime, actions, icons, palette);
-                    }
-                });
-        });
+    for (index, &entry) in list.iter().enumerate() {
+        let cell = Rect::from_min_size(
+            pos2(
+                area.left() + (index % columns) as f32 * card_w,
+                area.top() + (index / columns) as f32 * CARD_H,
+            ),
+            vec2(card_w, CARD_H),
+        );
+        card(ui, t, cell, entry, index, runtime, actions, icons);
+    }
+
+    // The lattice: one rule per card edge, drawn once thanks to the shared grid.
+    let stroke = Stroke::new(1.0_f32, t.line);
+    let painter = ui.painter();
+    for row in 0..rows {
+        let used = (list.len() - row * columns).min(columns);
+        let y0 = area.top() + row as f32 * CARD_H;
+        let y1 = y0 + CARD_H;
+        let x0 = area.left();
+        let x1 = x0 + used as f32 * card_w;
+        painter.hline(x0..=x1, y1, stroke);
+        if row == 0 {
+            painter.hline(x0..=x1, y0, stroke);
+        }
+        for column in 0..=used {
+            let x = x0 + column as f32 * card_w;
+            painter.vline(x, y0..=y1, stroke);
+        }
+    }
+
+    ui.add_space(24.0);
 }
 
-/// One table row.
-fn row(
+/// One card, painted into an explicit rect so the grid stays gapless.
+#[allow(clippy::too_many_arguments)]
+fn card(
     ui: &mut Ui,
+    t: &Tokens,
+    cell: Rect,
+    card: &Card,
+    index: usize,
+    runtime: &Runtime,
+    actions: &mut Vec<(String, Action)>,
+    icons: &mut IconStore,
+) {
+    let id = card.id().to_string();
+    let running = runtime.is_running(&id);
+    let status = if running {
+        AppStatus::Running
+    } else {
+        status_of(card)
+    };
+    let app_color = widgets::card_color(card, t);
+    let app_ink = accent_ink(t, app_color);
+
+    let interaction = ui.make_persistent_id(("nucleus-card", id.as_str()));
+    let response = ui.interact(cell, interaction, Sense::hover());
+    let lift = ui
+        .ctx()
+        .animate_bool_with_time(interaction, response.hovered(), 0.18);
+
+    if lift > 0.0 {
+        let painter = ui.painter();
+        painter.rect_filled(
+            cell,
+            CornerRadius::ZERO,
+            blend(t.bg, app_color, 0.05 * lift),
+        );
+        // The app-coloured rule wiping in along the top edge.
+        painter.rect_filled(
+            Rect::from_min_size(cell.min, vec2(cell.width() * lift, 2.0)),
+            CornerRadius::ZERO,
+            app_color,
+        );
+    }
+
+    let inner = Rect::from_min_max(
+        cell.min + vec2(CARD_PAD, CARD_PAD),
+        cell.max - vec2(CARD_PAD, CARD_PAD),
+    );
+
+    ui.scope_builder(UiBuilder::new().max_rect(inner), |ui| {
+        ui.spacing_mut().item_spacing = vec2(8.0, 6.0);
+        ui.set_clip_rect(cell);
+
+        // --- top strip: number tab + category label -------------------------
+        ui.allocate_ui_with_layout(
+            vec2(inner.width(), STRIP_H),
+            Layout::left_to_right(Align::Center),
+            |ui| {
+                ui.spacing_mut().item_spacing = vec2(6.0, 0.0);
+                widgets::tag(ui, &format!("{:02}", index + 1), app_color, Color32::BLACK);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    widgets::hud_inline(ui, strip_label(card), t.faint, HUD_SIZE, 0.15);
+                });
+            },
+        );
+        let strip_bottom = ui.cursor().top();
+        ui.painter()
+            .hline(cell.x_range(), strip_bottom, Stroke::new(1.0_f32, t.line));
+        ui.add_space(18.0);
+
+        // --- icon + identity ------------------------------------------------
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing = vec2(12.0, 0.0);
+            app_icon(ui, t, icons, card, 56.0);
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing = vec2(0.0, 4.0);
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+                    let (head, tail) = split_name(card.title());
+                    ui.label(
+                        RichText::new(head)
+                            .font(fonts::display(22.0))
+                            .color(t.ink_strong),
+                    );
+                    if let Some(tail) = tail {
+                        ui.label(
+                            RichText::new(tail)
+                                .font(fonts::display(22.0))
+                                .color(app_ink),
+                        );
+                    }
+                });
+                if let Some(tagline) = card.description() {
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(tagline)
+                                .font(fonts::body(13.5))
+                                .color(t.muted),
+                        )
+                        .truncate(),
+                    );
+                }
+            });
+        });
+
+        // --- status + version ----------------------------------------------
+        ui.add_space(14.0);
+        let (label, tone) = widgets::status_label(status);
+        ui.horizontal(|ui| {
+            widgets::badge(ui, t, label, tone);
+        });
+        ui.add_space(4.0);
+        ui.label(
+            RichText::new(version_line(card))
+                .font(fonts::body(12.5))
+                .color(t.muted),
+        );
+    });
+
+    // --- bottom-anchored actions -------------------------------------------
+    let actions_rect = Rect::from_min_size(
+        pos2(inner.left(), cell.bottom() - CARD_PAD - CONTROL_H),
+        vec2(inner.width(), CONTROL_H),
+    );
+    ui.scope_builder(UiBuilder::new().max_rect(actions_rect), |ui| {
+        ui.spacing_mut().item_spacing = vec2(8.0, 0.0);
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            card_actions(ui, t, card, running, status, actions);
+        });
+    });
+}
+
+/// The action row of a card: one primary button plus a "reveal" glyph.
+fn card_actions(
+    ui: &mut Ui,
+    t: &Tokens,
+    card: &Card,
+    running: bool,
+    status: AppStatus,
+    actions: &mut Vec<(String, Action)>,
+) {
+    let id = card.id().to_string();
+    let main_width = (ui.available_width() - CONTROL_H - 8.0).max(120.0);
+
+    if running {
+        if widgets::button(ui, t, "Stop", ButtonKind::Secondary, true, main_width).clicked() {
+            actions.push((id.clone(), Action::Stop));
+        }
+    } else {
+        match status {
+            AppStatus::Installed | AppStatus::UpdateAvailable => {
+                if widgets::button(ui, t, "Open", ButtonKind::Primary, true, main_width).clicked() {
+                    actions.push((id.clone(), Action::Open));
+                }
+            }
+            AppStatus::NotInstalled if matches!(card, Card::App(_)) => {
+                widgets::button(ui, t, "Install", ButtonKind::Primary, false, main_width);
+            }
+            AppStatus::NotInstalled => {
+                widgets::button(ui, t, "Planned", ButtonKind::Secondary, false, main_width);
+            }
+            _ => {
+                widgets::button(
+                    ui,
+                    t,
+                    "Unavailable",
+                    ButtonKind::Secondary,
+                    false,
+                    main_width,
+                );
+            }
+        }
+    }
+
+    let revealable = matches!(card, Card::App(_));
+    if widgets::glyph_button(ui, t, "…", revealable)
+        .on_hover_text("Reveal in Explorer")
+        .clicked()
+    {
+        actions.push((id, Action::Reveal));
+    }
+}
+
+fn app_icon(ui: &mut Ui, t: &Tokens, icons: &mut IconStore, card: &Card, size: f32) {
+    let color = widgets::card_color(card, t);
+    let mut texture = None;
+    if let Card::App(app) = card
+        && let Some(icon) = &app.manifest.icon
+    {
+        let path = app.dir.join(icon);
+        if path.exists() {
+            texture = icons.load(ui.ctx(), app.id(), &path, size).cloned();
+        }
+    }
+    widgets::icon_tile(ui, t, texture.as_ref(), card.title(), color, size);
+}
+
+/// Split a name so the last word can carry the app colour, like the reference
+/// wordmark does ("Art" + "Craft").
+fn split_name(name: &str) -> (String, Option<&str>) {
+    match name.rsplit_once(' ') {
+        Some((head, tail)) if !head.is_empty() => (format!("{head} "), Some(tail)),
+        _ => (name.to_string(), None),
+    }
+}
+
+fn strip_label(card: &Card) -> &'static str {
+    match card {
+        Card::App(app) => app.manifest.category.map(|c| c.as_str()).unwrap_or("app"),
+        Card::Planned(_) => "roadmap",
+    }
+}
+
+fn version_line(card: &Card) -> String {
+    match card {
+        Card::App(app) => {
+            let mut parts = vec![app.manifest.version.clone()];
+            if let Some(status) = app.manifest.status {
+                parts.push(status.as_str().to_string());
+            }
+            parts.push(app.source.as_str().to_string());
+            parts.join(" · ")
+        }
+        Card::Planned(entry) => match &entry.inspired_by {
+            Some(inspired) => format!("coming soon · inspired by {inspired}"),
+            None => "coming soon".to_string(),
+        },
+    }
+}
+
+/// A readable version of an app colour against the current background.
+fn accent_ink(t: &Tokens, color: Color32) -> Color32 {
+    if t.dark {
+        blend(color, Color32::WHITE, 0.35)
+    } else {
+        blend(color, Color32::BLACK, 0.20)
+    }
+}
+
+fn blend(from: Color32, to: Color32, amount: f32) -> Color32 {
+    super::theme::blend(from, to, amount)
+}
+
+// ---------------------------------------------------------------------------
+// Table
+// ---------------------------------------------------------------------------
+
+/// A table with hairline row dividers, no zebra striping, and columns sortable
+/// from their headers.
+fn table(
+    ui: &mut Ui,
+    t: &Tokens,
+    list: &[&Card],
+    runtime: &Runtime,
+    actions: &mut Vec<(String, Action)>,
+    icons: &mut IconStore,
+    sort: &mut (SortKey, bool),
+) {
+    let fixed = COL_CATEGORY + COL_STATUS + COL_VERSION + COL_SOURCE + COL_ACTIONS;
+    let width = ui.available_width().max(fixed + 240.0);
+    let app_w = width - fixed;
+    let height = TABLE_HEADER_H + list.len() as f32 * TABLE_ROW_H;
+    let (area, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+
+    let offsets = [
+        0.0,
+        app_w,
+        app_w + COL_CATEGORY,
+        app_w + COL_CATEGORY + COL_STATUS,
+        app_w + COL_CATEGORY + COL_STATUS + COL_VERSION,
+        app_w + COL_CATEGORY + COL_STATUS + COL_VERSION + COL_SOURCE,
+    ];
+    let widths = [
+        app_w,
+        COL_CATEGORY,
+        COL_STATUS,
+        COL_VERSION,
+        COL_SOURCE,
+        COL_ACTIONS,
+    ];
+    let stroke = Stroke::new(1.0_f32, t.line);
+
+    // --- header ------------------------------------------------------------
+    let header = Rect::from_min_size(area.min, vec2(width, TABLE_HEADER_H));
+    let sortable = [
+        Some(SortKey::Name),
+        Some(SortKey::Category),
+        Some(SortKey::Status),
+        Some(SortKey::Version),
+        None,
+        None,
+    ];
+    for index in 0..offsets.len() {
+        let cell = Rect::from_min_size(
+            pos2(area.left() + offsets[index], header.top()),
+            vec2(widths[index], TABLE_HEADER_H),
+        );
+        let pad = if index == 0 { 16.0 } else { 12.0 };
+        let galley = match sortable[index] {
+            Some(key) => widgets::hud_galley(ui, key.label(), HUD_SIZE, 0.15),
+            None => widgets::hud_galley(ui, "Actions", HUD_SIZE, 0.15),
+        };
+        let galley_size = galley.size();
+        let response = ui.interact(
+            cell,
+            ui.make_persistent_id(("nucleus-th", index)),
+            if sortable[index].is_some() {
+                Sense::click()
+            } else {
+                Sense::hover()
+            },
+        );
+        let active = sortable[index] == Some(sort.0);
+        let color = if active || response.hovered() {
+            t.ink_strong
+        } else {
+            t.faint
+        };
+        let origin = pos2(cell.left() + pad, cell.center().y - galley_size.y * 0.5);
+        ui.painter().galley(origin, galley, color);
+        // The active column shows its direction; other sortable columns show a
+        // ghost arrow while hovered.
+        if sortable[index].is_some() && (active || response.hovered()) {
+            let arrow = pos2(origin.x + galley_size.x + 8.0, cell.center().y);
+            sort_arrow(ui.painter(), arrow, active && sort.1, color);
+        }
+        if response.clicked()
+            && let Some(key) = sortable[index]
+        {
+            *sort = if key == sort.0 {
+                (key, !sort.1)
+            } else {
+                (key, true)
+            };
+        }
+        if index > 0 {
+            ui.painter().vline(cell.left(), cell.y_range(), stroke);
+        }
+    }
+    ui.painter()
+        .hline(header.x_range(), header.bottom(), stroke);
+
+    // --- rows --------------------------------------------------------------
+    for (index, card) in list.iter().enumerate() {
+        let top = area.top() + TABLE_HEADER_H + index as f32 * TABLE_ROW_H;
+        let row = Rect::from_min_size(pos2(area.left(), top), vec2(width, TABLE_ROW_H));
+        table_row(ui, t, row, &offsets, &widths, card, runtime, actions, icons);
+        ui.painter().hline(row.x_range(), row.bottom(), stroke);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn table_row(
+    ui: &mut Ui,
+    t: &Tokens,
+    row: Rect,
+    offsets: &[f32; 6],
+    widths: &[f32; 6],
     card: &Card,
     runtime: &Runtime,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
-    palette: Palette,
 ) {
-    let id = card.id().to_string();
-    let running = runtime.is_running(&id);
-
-    ui.horizontal(|ui| {
-        app_icon(ui, icons, card, 24.0, palette);
-        ui.add_space(2.0);
-        ui.label(
-            RichText::new(card.title())
-                .size(13.0)
-                .color(palette.text)
-                .font(fonts::body(13.0)),
-        );
-    });
-    if let Some(category) = card_category(card) {
-        let cc = category_color(Some(category));
-        ui.add(Tag {
-            text: category.as_str(),
-            color: cc,
-            palette,
-        });
+    let running = runtime.is_running(card.id());
+    let status = if running {
+        AppStatus::Running
     } else {
-        ui.label(RichText::new("—").color(palette.muted));
-    }
-    match card {
-        Card::App(app) => {
-            ui.label(
-                RichText::new(&app.manifest.version)
-                    .size(12.0)
-                    .color(palette.muted)
-                    .monospace(),
-            );
-            let status = if running {
-                AppStatus::Running
-            } else {
-                status_of(card)
-            };
-            ui.add(widgets::StatusBadge { status });
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if running {
-                    if widgets::ghost_button(ui, "Stop", RUN).clicked() {
-                        actions.push((id, Action::Stop));
-                    }
-                } else {
-                    match status_of(card) {
-                        AppStatus::Installed | AppStatus::UpdateAvailable => {
-                            if widgets::primary_button(ui, "Open", true, ACCENT).clicked() {
-                                actions.push((id, Action::Open));
-                            }
-                        }
-                        _ => {
-                            widgets::primary_button(ui, "Install", false, ACCENT);
-                        }
-                    }
-                }
-            });
-        }
-        Card::Planned(_) => {
-            ui.label(RichText::new("—").color(palette.muted));
-            ui.add(widgets::StatusBadge {
-                status: AppStatus::NotInstalled,
-            });
-            widgets::primary_button(ui, "Install", false, ACCENT);
-        }
-    }
-    ui.end_row();
-}
+        status_of(card)
+    };
+    let app_color = widgets::card_color(card, t);
+    let painter = ui.painter().clone();
 
-/// A compact "coming soon" row.
-fn planned_row(ui: &mut Ui, card: &Card, palette: Palette) {
-    egui::Frame::NONE
-        .fill(palette.surface)
-        .corner_radius(10)
-        .inner_margin(egui::Margin::symmetric(14, 8))
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                let color = card_color(card, palette);
-                let (rect, _) = ui.allocate_exact_size(egui::vec2(32.0, 32.0), Sense::hover());
-                ui.painter().rect_filled(rect, 7, color.gamma_multiply(0.2));
-                ui.painter().text(
-                    rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    card.title()
-                        .chars()
-                        .next()
-                        .map(|c| c.to_uppercase().to_string())
-                        .unwrap_or_default(),
-                    egui::FontId::new(15.0, egui::FontFamily::Name("nucleus-bold".into())),
-                    color,
-                );
-                ui.vertical(|ui| {
-                    ui.label(
-                        RichText::new(card.title())
-                            .size(13.0)
-                            .color(palette.text)
-                            .font(fonts::semibold(13.0)),
-                    );
-                    if let Some(description) = card.description() {
-                        ui.label(RichText::new(description).size(11.5).color(palette.muted));
-                    }
-                });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add(Tag {
-                        text: "Planned",
-                        color: AMBER,
-                        palette,
-                    });
-                });
-            });
+    // App cell: thumbnail, wordmark and tagline.
+    let thumb = Rect::from_min_size(
+        pos2(row.left() + 16.0, row.center().y - TABLE_THUMB * 0.5),
+        egui::Vec2::splat(TABLE_THUMB),
+    );
+    icon_tile_at(ui, t, icons, card, thumb);
+    let text_x = thumb.right() + 10.0;
+    let text_width = (offsets[1] - (text_x - row.left()) - 12.0).max(40.0);
+    let name = widgets::line(ui, card.title(), fonts::display(16.0), text_width);
+    painter.galley(
+        pos2(text_x, row.center().y - name.size().y - 1.0),
+        name,
+        t.ink_strong,
+    );
+    if let Some(tagline) = card.description() {
+        let line = widgets::line(ui, tagline, fonts::body(12.0), text_width);
+        painter.galley(pos2(text_x, row.center().y + 1.0), line, t.muted);
+    }
+
+    // Category.
+    let category = widgets::hud_galley(ui, category_str(card), HUD_SIZE, 0.15);
+    let category_ink = if card.category().is_some() {
+        accent_ink(t, app_color)
+    } else {
+        t.faint
+    };
+    painter.galley(
+        cell_text_origin(row, offsets[1], 12.0, category.size().y),
+        category,
+        category_ink,
+    );
+
+    // Status badge.
+    let (label, tone) = widgets::status_label(status);
+    let badge_size = widgets::badge_size(ui, label);
+    let badge_rect = Rect::from_min_size(
+        pos2(
+            row.left() + offsets[2] + 12.0,
+            row.center().y - badge_size.y * 0.5,
+        ),
+        badge_size,
+    );
+    ui.scope_builder(UiBuilder::new().max_rect(badge_rect), |ui| {
+        widgets::badge(ui, t, label, tone);
+    });
+
+    // Version.
+    let version = match card {
+        Card::App(app) => app.manifest.version.as_str(),
+        Card::Planned(_) => "—",
+    };
+    painter.text(
+        pos2(row.left() + offsets[3] + 12.0, row.center().y),
+        Align2::LEFT_CENTER,
+        version,
+        fonts::mono(13.0),
+        if status.is_installed() {
+            t.ink
+        } else {
+            t.faint
+        },
+    );
+
+    // Source.
+    let source = match card {
+        Card::App(app) => app.source.as_str(),
+        Card::Planned(_) => "roadmap",
+    };
+    painter.text(
+        pos2(row.left() + offsets[4] + 12.0, row.center().y),
+        Align2::LEFT_CENTER,
+        source,
+        fonts::mono(HUD_SIZE),
+        t.faint,
+    );
+
+    // Actions.
+    let actions_rect = Rect::from_min_size(
+        pos2(row.left() + offsets[5], row.center().y - CONTROL_H * 0.5),
+        vec2(widths[5], CONTROL_H),
+    );
+    ui.scope_builder(UiBuilder::new().max_rect(actions_rect), |ui| {
+        ui.spacing_mut().item_spacing = vec2(8.0, 0.0);
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            ui.add_space(4.0);
+            card_actions(ui, t, card, running, status, actions);
         });
+    });
 }
 
-/// Bottom footer: counts + running apps + node path + last log line.
+fn cell_text_origin(row: Rect, offset: f32, pad: f32, text_height: f32) -> Pos2 {
+    pos2(
+        row.left() + offset + pad,
+        row.center().y - text_height * 0.5,
+    )
+}
+
+fn icon_tile_at(ui: &mut Ui, t: &Tokens, icons: &mut IconStore, card: &Card, rect: Rect) {
+    let color = widgets::card_color(card, t);
+    let mut texture = None;
+    if let Card::App(app) = card
+        && let Some(icon) = &app.manifest.icon
+    {
+        let path = app.dir.join(icon);
+        if path.exists() {
+            texture = icons.load(ui.ctx(), app.id(), &path, rect.width()).cloned();
+        }
+    }
+    let painter = ui.painter();
+    painter.rect_filled(rect, CornerRadius::ZERO, t.sunken);
+    match texture {
+        Some(texture) => {
+            painter.image(
+                texture.id(),
+                rect.shrink(rect.width() * 0.10),
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+        None => {
+            let glyph = card
+                .title()
+                .chars()
+                .next()
+                .map(|c| c.to_uppercase().to_string())
+                .unwrap_or_else(|| "?".into());
+            painter.text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                glyph,
+                fonts::display(rect.width() * 0.45),
+                color,
+            );
+        }
+    }
+    painter.rect_stroke(
+        rect,
+        CornerRadius::ZERO,
+        Stroke::new(1.0_f32, t.line),
+        egui::StrokeKind::Inside,
+    );
+}
+
+/// A small filled triangle marking the active sort column.
+fn sort_arrow(painter: &egui::Painter, center: Pos2, up: bool, color: Color32) {
+    let (half_w, half_h) = (4.0, 3.0);
+    let points = if up {
+        vec![
+            pos2(center.x, center.y - half_h),
+            pos2(center.x - half_w, center.y + half_h),
+            pos2(center.x + half_w, center.y + half_h),
+        ]
+    } else {
+        vec![
+            pos2(center.x, center.y + half_h),
+            pos2(center.x - half_w, center.y - half_h),
+            pos2(center.x + half_w, center.y - half_h),
+        ]
+    };
+    painter.add(Shape::convex_polygon(points, color, Stroke::NONE));
+}
+
+// ---------------------------------------------------------------------------
+// Footer
+// ---------------------------------------------------------------------------
+
+/// The 34 px status bar: totals on the left, environment on the right.
 pub fn footer(
     ui: &mut Ui,
+    t: &Tokens,
     counts: Counts,
-    node: Option<&str>,
+    facts: &Facts,
     runtime: &Runtime,
     log: &[String],
-    palette: Palette,
 ) {
-    ui.horizontal(|ui| {
-        ui.label(
-            RichText::new(format!(
-                "{} app{} · {} installed · {} planned · {} running",
-                counts.all,
-                plural(counts.all),
-                counts.installed,
-                counts.upcoming,
-                counts.running
-            ))
-            .size(11.0)
-            .color(palette.muted)
-            .font(fonts::body(11.0)),
+    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+        let summary = format!(
+            "{} app{} · {} installed · {} update{} · {} planned",
+            counts.all,
+            plural(counts.all),
+            counts.installed,
+            counts.updates,
+            plural(counts.updates),
+            counts.planned,
         );
-        ui.separator();
-        for id in runtime.running_ids() {
-            let detail = runtime
-                .running_info(&id)
-                .map(|(url, port)| match (url, port) {
-                    (Some(url), _) => format!("· {url}"),
-                    (None, Some(port)) => format!("· :{port}"),
-                    (None, None) => String::new(),
-                })
-                .unwrap_or_default();
-            ui.label(
-                RichText::new(format!("▶ {id}{detail}"))
-                    .size(11.0)
-                    .color(RUN)
-                    .font(fonts::mono(11.0)),
+        widgets::hud_inline(ui, &summary, t.faint, HUD_SIZE, 0.15);
+
+        if counts.running > 0 {
+            ui.add_space(10.0);
+            let mut parts: Vec<String> = Vec::new();
+            for id in runtime.running_ids() {
+                let detail = runtime
+                    .running_info(&id)
+                    .and_then(|(url, port)| url.or_else(|| port.map(|p| format!(":{p}"))));
+                parts.push(match detail {
+                    Some(detail) => format!("{id} {detail}"),
+                    None => id,
+                });
+            }
+            widgets::hud_inline(
+                ui,
+                &format!("running · {}", parts.join("  ")),
+                t.good,
+                HUD_SIZE,
+                0.15,
             );
+        } else if let Some(last) = log.last() {
+            ui.add_space(10.0);
+            widgets::hud_inline(ui, last, t.faint, HUD_SIZE, 0.15);
         }
-        if let Some(node_path) = node {
-            ui.separator();
-            ui.label(
-                RichText::new(format!("node {}", node_path.trim_end_matches("node.exe")))
-                    .size(11.0)
-                    .color(palette.muted)
-                    .font(fonts::mono(11.0)),
+
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            widgets::hud_inline(
+                ui,
+                concat!("Nucleus ", env!("CARGO_PKG_VERSION")),
+                t.faint,
+                HUD_SIZE,
+                0.15,
             );
-        }
-        if let Some(last) = log.last() {
-            ui.separator();
-            ui.label(
-                RichText::new(last)
-                    .size(11.0)
-                    .color(palette.muted)
-                    .font(fonts::mono(11.0)),
-            );
-        }
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.label(
-                RichText::new("egui · Rust · Windows")
-                    .size(10.0)
-                    .color(palette.muted.gamma_multiply(0.8))
-                    .font(fonts::body(10.0)),
-            );
+            ui.add_space(12.0);
+            match facts.node_path() {
+                Some(path) => {
+                    widgets::hud_inline(ui, &format!("node {path}"), t.faint, HUD_SIZE, 0.15);
+                }
+                None => {
+                    widgets::hud_inline(ui, "node not found", t.warn, HUD_SIZE, 0.15);
+                }
+            }
         });
     });
 }
 
 fn plural(count: usize) -> &'static str {
     if count == 1 { "" } else { "s" }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nucleus_launcher_core::{AppSource, parse_manifest};
+
+    fn app(id: &str, name: &str) -> Card {
+        Card::App(Box::new(nucleus_launcher_core::AppMeta {
+            manifest: parse_manifest(&format!(
+                r#"{{"id":"{id}","name":"{name}","version":"0.1.0","coreApiVersion":"1","launch":{{"kind":"server","args":["server.js"]}}}}"#
+            ))
+            .unwrap(),
+            dir: std::path::PathBuf::from("."),
+            manifest_path: std::path::PathBuf::from("."),
+            source: AppSource::Repo,
+            installed: None,
+            catalog: None,
+        }))
+    }
+
+    #[test]
+    fn search_matches_id_name_and_description() {
+        let card = app("nucleus.notes", "Notes");
+        assert!(matches("", &card));
+        assert!(matches("notes", &card));
+        assert!(matches("NUCLEUS.NOTES", &card));
+        assert!(!matches("zzz", &card));
+    }
+
+    #[test]
+    fn filter_index_round_trips() {
+        for filter in [
+            Filter::All,
+            Filter::Installed,
+            Filter::Updates,
+            Filter::NotInstalled,
+            Filter::Planned,
+        ] {
+            assert_eq!(filter_from_index(filter_index(filter)), filter);
+        }
+    }
+
+    #[test]
+    fn split_name_puts_the_last_word_in_the_tail() {
+        assert_eq!(
+            split_name("PDF Workbench"),
+            ("PDF ".to_string(), Some("Workbench"))
+        );
+        assert_eq!(split_name("Notes"), ("Notes".to_string(), None));
+    }
+
+    #[test]
+    fn sorting_by_name_is_case_insensitive() {
+        let a = app("nucleus.a", "alpha");
+        let b = app("nucleus.b", "Beta");
+        let mut list = vec![&b, &a];
+        sort_cards(&mut list, (SortKey::Name, true));
+        assert_eq!(list[0].title(), "alpha");
+        sort_cards(&mut list, (SortKey::Name, false));
+        assert_eq!(list[0].title(), "Beta");
+    }
 }

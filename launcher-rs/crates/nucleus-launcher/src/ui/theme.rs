@@ -1,257 +1,178 @@
-//! Design tokens, the Nucleus dark + light themes and the Windows font setup
-//! (SPEC: INK/SURFACE/TEXT/ACCENT/CYAN/RUN/AMBER).
+//! Design tokens, themes and embedded fonts for the Nucleus launcher.
+//!
+//! The look is deliberately flat and editorial: **hard edges** (every corner
+//! radius is zero), **hairline rules** instead of shadows, a single blue
+//! accent, and three typefaces — Archivo for display, Inter for body text and
+//! Geist Mono for the uppercase "HUD" labels.
+//!
+//! Fonts are embedded under the SIL Open Font License; their licence texts
+//! ship next to the binaries in `assets/fonts/OFL-*.txt`.
 
 use std::sync::Arc;
 
 use egui::{Color32, Context, FontData, FontDefinitions, FontFamily, TextStyle, Visuals};
 
-/// `#0B0E14` — page background (dark).
-pub const INK: Color32 = Color32::from_rgb(0x0B, 0x0E, 0x14);
-/// `#151B26` — panels, cards (dark).
-pub const SURFACE: Color32 = Color32::from_rgb(0x15, 0x1B, 0x26);
-/// `#E7ECF5` — primary text.
-pub const TEXT: Color32 = Color32::from_rgb(0xE7, 0xEC, 0xF5);
-/// `#6D5EF8` — accent (Open, selection).
-pub const ACCENT: Color32 = Color32::from_rgb(0x6D, 0x5E, 0xF8);
-/// `#22D3EE` — cyan (tag chips).
-pub const CYAN: Color32 = Color32::from_rgb(0x22, 0xD3, 0xEE);
-/// `#34D399` — running.
-pub const RUN: Color32 = Color32::from_rgb(0x34, 0xD3, 0x99);
-/// `#F59E0B` — update available / warnings.
-pub const AMBER: Color32 = Color32::from_rgb(0xF5, 0x9E, 0x0B);
-/// `#E85A6C` — destructive (Stop).
-pub const DANGER: Color32 = Color32::from_rgb(0xE8, 0x5A, 0x6C);
-/// `#8A91A0` — secondary text / unavailable.
-pub const MUTED: Color32 = Color32::from_rgb(0x8A, 0x91, 0xA0);
+/// Height of every control: buttons, inputs, filter cells, glyph buttons.
+pub const CONTROL_H: f32 = 34.0;
+/// Height of the top chrome bar.
+pub const HEADER_H: f32 = 48.0;
+/// Height of the bottom status bar.
+pub const FOOTER_H: f32 = 34.0;
+/// Size of the monospace "HUD" labels.
+pub const HUD_SIZE: f32 = 11.0;
 
-/// A resolved palette: pick dark or light, then build the egui visuals.
-#[derive(Debug, Clone, Copy)]
-pub struct Palette {
-    pub bg: Color32,
-    pub surface: Color32,
-    pub surface2: Color32,
-    pub border: Color32,
-    pub text: Color32,
-    pub muted: Color32,
-    pub selection_bg: Color32,
+// --- Raw palette ------------------------------------------------------------
+
+/// `#121316` — page background (dark).
+pub const BG_DARK: Color32 = rgb(0x121316);
+/// `#060607` — wells, badges, input backgrounds (dark).
+pub const SUNKEN_DARK: Color32 = rgb(0x06_06_07);
+/// `#F2F1EE` — warm off-white ink (dark theme).
+pub const INK_DARK: Color32 = rgb(0xF2_F1_EE);
+/// `#F2F1EE` — page background (light).
+pub const BG_LIGHT: Color32 = rgb(0xF2_F1_EE);
+/// `#E9E8E4` — wells, badges, input backgrounds (light).
+pub const SUNKEN_LIGHT: Color32 = rgb(0xE9_E8_E4);
+/// `#101014` — ink (light theme).
+pub const INK_LIGHT: Color32 = rgb(0x10_10_14);
+/// `#2D81FF` — brand blue, both themes.
+pub const ACCENT: Color32 = rgb(0x2D_81_FF);
+
+const fn rgb(hex: u32) -> Color32 {
+    Color32::from_rgb(
+        ((hex >> 16) & 0xFF) as u8,
+        ((hex >> 8) & 0xFF) as u8,
+        (hex & 0xFF) as u8,
+    )
 }
 
-impl Palette {
+/// The same colour at a given alpha (used for muted/faint/line inks).
+fn alpha(color: Color32, a: u8) -> Color32 {
+    Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), a)
+}
+
+/// Semantic tone of a status, mapped to a token colour.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tone {
+    Good,
+    Warn,
+    Info,
+    Neutral,
+    Faint,
+}
+
+/// A fully resolved theme. Construct with [`Tokens::dark`] / [`Tokens::light`]
+/// and pass by value (it is `Copy`).
+#[derive(Debug, Clone, Copy)]
+pub struct Tokens {
+    /// Whether this is the dark variant (used for the odd branch).
+    pub dark: bool,
+    /// Page background — also the surface every card is painted on.
+    pub bg: Color32,
+    /// Recessed wells: badges, search field, hovers.
+    pub sunken: Color32,
+    /// Body text.
+    pub ink: Color32,
+    /// Headings and emphasised text.
+    pub ink_strong: Color32,
+    /// Secondary text.
+    pub muted: Color32,
+    /// Tertiary text and labels.
+    pub faint: Color32,
+    /// Hairline rules.
+    pub line: Color32,
+    /// Stronger hairline for outlined controls.
+    pub line_strong: Color32,
+    /// Brand blue surface.
+    pub accent: Color32,
+    /// Brand blue as text/icon ink.
+    pub accent_ink: Color32,
+    /// Inverted (solid) control background.
+    pub invert_bg: Color32,
+    /// Inverted (solid) control foreground.
+    pub invert_fg: Color32,
+    pub good: Color32,
+    pub warn: Color32,
+    pub bad: Color32,
+}
+
+impl Tokens {
     pub fn dark() -> Self {
-        Palette {
-            bg: INK,
-            surface: SURFACE,
-            surface2: Color32::from_rgb(0x1E, 0x25, 0x33),
-            border: Color32::from_rgba_premultiplied(0xFF, 0xFF, 0xFF, 14),
-            text: TEXT,
-            muted: Color32::from_rgb(0x8A, 0x91, 0xA0),
-            selection_bg: ACCENT.gamma_multiply(0.35),
+        let ink = INK_DARK;
+        Tokens {
+            dark: true,
+            bg: BG_DARK,
+            sunken: SUNKEN_DARK,
+            ink,
+            ink_strong: Color32::WHITE,
+            muted: alpha(ink, 153),
+            faint: alpha(ink, 97),
+            line: alpha(ink, 38),
+            line_strong: alpha(ink, 102),
+            accent: ACCENT,
+            accent_ink: rgb(0x74_AA_FF),
+            invert_bg: Color32::WHITE,
+            invert_fg: rgb(0x0B_0B_0C),
+            good: rgb(0x3F_D6_B8),
+            warn: rgb(0xFF_C1_4D),
+            bad: rgb(0xFF_62_59),
         }
     }
 
     pub fn light() -> Self {
-        Palette {
-            bg: Color32::from_rgb(0xEF, 0xF1, 0xF6),
-            surface: Color32::from_rgb(0xFF, 0xFF, 0xFF),
-            surface2: Color32::from_rgb(0xF1, 0xF3, 0xF8),
-            border: Color32::from_rgba_premultiplied(0x0F, 0x15, 0x2B, 22),
-            text: Color32::from_rgb(0x10, 0x15, 0x2B),
-            muted: Color32::from_rgb(0x5B, 0x64, 0x74),
-            selection_bg: ACCENT.gamma_multiply(0.18),
+        let ink = INK_LIGHT;
+        Tokens {
+            dark: false,
+            bg: BG_LIGHT,
+            sunken: SUNKEN_LIGHT,
+            ink,
+            ink_strong: Color32::BLACK,
+            muted: alpha(ink, 158),
+            faint: alpha(ink, 107),
+            line: alpha(ink, 41),
+            line_strong: alpha(ink, 102),
+            accent: ACCENT,
+            accent_ink: rgb(0x16_59_C4),
+            invert_bg: rgb(0x10_10_14),
+            invert_fg: rgb(0xF2_F1_EE),
+            good: rgb(0x0A_75_63),
+            warn: rgb(0x8A_58_00),
+            bad: rgb(0xB3_26_1E),
+        }
+    }
+
+    /// The colour a semantic tone paints in.
+    pub fn tone(&self, tone: Tone) -> Color32 {
+        match tone {
+            Tone::Good => self.good,
+            Tone::Warn => self.warn,
+            Tone::Info => self.accent_ink,
+            Tone::Neutral => self.muted,
+            Tone::Faint => self.faint,
         }
     }
 }
 
-/// Segoe UI from `C:\Windows\Fonts`, registered as the `nucleus*` families so
-/// the UI looks native on Windows instead of the embedded egui font.
-pub fn install_fonts(ctx: &Context) {
-    let mut defs = FontDefinitions::default();
-    let default_prop = defs
-        .families
-        .get(&FontFamily::Proportional)
-        .cloned()
-        .unwrap_or_default();
-    let default_mono = defs
-        .families
-        .get(&FontFamily::Monospace)
-        .cloned()
-        .unwrap_or_default();
-
-    let fonts_dir = std::path::Path::new("C:\\Windows\\Fonts");
-    // (our family name, candidate Windows files in priority order)
-    let candidates: &[(&str, &[&str])] = &[
-        ("nucleus", &["segoeui.ttf"]),
-        ("nucleus-bold", &["segoeuib.ttf"]),
-        ("nucleus-light", &["segoeuil.ttf"]),
-        ("nucleus-semibold", &["seguisb.ttf", "segoeuib.ttf"]),
-        ("nucleus-mono", &["consola.ttf"]),
-        ("nucleus-emoji", &["seguiemj.ttf"]),
-        ("nucleus-symbol", &["seguisym.ttf"]),
-    ];
-
-    let mut loaded: Vec<&str> = Vec::new();
-    for &(family, files) in candidates {
-        for file in files {
-            if let Ok(bytes) = std::fs::read(fonts_dir.join(file)) {
-                defs.font_data
-                    .insert(family.to_string(), Arc::new(FontData::from_owned(bytes)));
-                loaded.push(family);
-                break;
-            }
-        }
-    }
-
-    // Faces used as fallbacks for every text family, in order.
-    let text_faces: Vec<String> = ["nucleus", "nucleus-emoji", "nucleus-symbol"]
-        .iter()
-        .filter(|family| loaded.contains(&**family))
-        .map(|family| family.to_string())
-        .collect();
-
-    // Register every family a view may reference; never leave one empty so
-    // layout cannot panic when a font file is absent.
-    for &(family, _files) in candidates {
-        let mut list: Vec<String> = Vec::new();
-        if loaded.contains(&family) {
-            list.push(family.to_string());
-        }
-        if family == "nucleus-mono" {
-            list.extend(default_mono.iter().cloned());
-        } else {
-            for face in &text_faces {
-                if !list.contains(face) {
-                    list.push(face.clone());
-                }
-            }
-            list.extend(default_prop.iter().cloned());
-        }
-        list.dedup();
-        if list.is_empty() {
-            list = default_prop.clone();
-        }
-        defs.families.insert(FontFamily::Name(family.into()), list);
-    }
-
-    // Standard families: prefer Segoe UI, keep everything else as fallback.
-    let mut prop: Vec<String> = text_faces.clone();
-    for font in &default_prop {
-        if !prop.contains(font) {
-            prop.push(font.clone());
-        }
-    }
-    if prop.is_empty() {
-        prop = default_prop;
-    }
-    defs.families.insert(FontFamily::Proportional, prop);
-
-    let mut mono: Vec<String> = Vec::new();
-    if loaded.contains(&"nucleus-mono") {
-        mono.push("nucleus-mono".to_string());
-    }
-    for font in &default_mono {
-        if !mono.contains(font) {
-            mono.push(font.clone());
-        }
-    }
-    if mono.is_empty() {
-        mono = default_mono;
-    }
-    defs.families.insert(FontFamily::Monospace, mono);
-
-    ctx.set_fonts(defs);
-}
-
-/// Reference font ids used across the views.
-pub mod fonts {
-    use egui::{FontFamily, FontId};
-
-    pub fn body(size: f32) -> FontId {
-        FontId::new(size, FontFamily::Name("nucleus".into()))
-    }
-
-    pub fn bold(size: f32) -> FontId {
-        FontId::new(size, FontFamily::Name("nucleus-bold".into()))
-    }
-
-    pub fn semibold(size: f32) -> FontId {
-        FontId::new(size, FontFamily::Name("nucleus-semibold".into()))
-    }
-
-    pub fn mono(size: f32) -> FontId {
-        FontId::new(size, FontFamily::Name("nucleus-mono".into()))
-    }
-}
-
-/// Apply a palette to the egui context (dark or light).
-pub fn configure_theme(ctx: &Context, palette: &Palette) {
-    let mut visuals = Visuals::dark();
-    if palette.bg == Palette::light().bg {
-        visuals = Visuals::light();
-    }
-
-    visuals.panel_fill = palette.bg;
-    visuals.window_fill = palette.surface;
-    visuals.extreme_bg_color = palette.bg;
-    visuals.faint_bg_color = palette.surface2;
-    visuals.override_text_color = Some(palette.text);
-    visuals.selection.bg_fill = palette.selection_bg;
-    visuals.selection.stroke = egui::Stroke::new(1.0_f32, ACCENT);
-    visuals.widgets.inactive.bg_fill = palette.surface2;
-    visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0_f32, palette.text);
-    visuals.widgets.hovered.bg_fill = lighten(palette.surface2, 0.05);
-    visuals.widgets.active.bg_fill = ACCENT.gamma_multiply(0.35);
-    visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0_f32, palette.text);
-    visuals.hyperlink_color = ACCENT;
-    ctx.set_visuals(visuals);
-
-    let mut style = (*ctx.style()).clone();
-    style.spacing.item_spacing = egui::vec2(10.0, 8.0);
-    style.spacing.button_padding = egui::vec2(14.0, 6.0);
-    style.spacing.window_margin = egui::Margin::same(0);
-    style.spacing.scroll = egui::style::ScrollStyle::solid();
-    style
-        .text_styles
-        .insert(TextStyle::Heading, fonts::bold(22.0));
-    style.text_styles.insert(TextStyle::Body, fonts::body(13.5));
-    style
-        .text_styles
-        .insert(TextStyle::Button, fonts::semibold(13.0));
-    style
-        .text_styles
-        .insert(TextStyle::Small, fonts::body(11.0));
-    ctx.set_style(style);
-}
-
-/// Lighten a colour a little (mixing toward white when dark, toward black when light).
-pub fn lighten(color: Color32, amount: f32) -> Color32 {
-    let toward = if color.r() as u16 + color.g() as u16 + color.b() as u16 > 384 {
-        Color32::BLACK
-    } else {
-        Color32::WHITE
+/// Linear blend from `from` to `to` by `t` (0..=1).
+pub fn blend(from: Color32, to: Color32, t: f32) -> Color32 {
+    let t = t.clamp(0.0, 1.0);
+    let mix = |a: u8, b: u8| {
+        (a as f32 + (b as f32 - a as f32) * t)
+            .round()
+            .clamp(0.0, 255.0) as u8
     };
-    Color32::from_rgba_premultiplied(
-        lerp(color.r(), toward.r(), amount),
-        lerp(color.g(), toward.g(), amount),
-        lerp(color.b(), toward.b(), amount),
-        255,
+    Color32::from_rgba_unmultiplied(
+        mix(from.r(), to.r()),
+        mix(from.g(), to.g()),
+        mix(from.b(), to.b()),
+        mix(from.a(), to.a()),
     )
 }
 
-fn lerp(a: u8, b: u8, t: f32) -> u8 {
-    (a as f32 + (b as f32 - a as f32) * t)
-        .round()
-        .clamp(0.0, 255.0) as u8
-}
-
-/// The card border colour for a hover state.
-pub fn hover_border(p: &Palette) -> Color32 {
-    ACCENT.gamma_multiply(if p.bg == Palette::dark().bg { 0.8 } else { 0.6 })
-}
-
-/// Approximate parse of `#RRGGBB` (roadmap tile colours). Returns None on
-/// garbage so the caller can fall back to a default.
+/// Parse `#RRGGBB` or `RRGGBB` (roadmap tile colours); `None` on anything else.
 pub fn hex_color(hex: &str) -> Option<Color32> {
-    let hex = hex.trim().strip_prefix('#')?;
+    let hex = hex.trim();
+    let hex = hex.strip_prefix('#').unwrap_or(hex);
     if hex.len() != 6 {
         return None;
     }
@@ -261,24 +182,225 @@ pub fn hex_color(hex: &str) -> Option<Color32> {
     Some(Color32::from_rgb(r, g, b))
 }
 
+// --- Fonts ------------------------------------------------------------------
+
+/// The typefaces, embedded so the look does not depend on the host machine.
+///
+/// * `display` — Archivo (wordmarks, headings)
+/// * `body` — Inter (paragraphs, buttons, captions)
+/// * `mono` — Geist Mono (the uppercase HUD labels)
+pub mod fonts {
+    use egui::{FontFamily, FontId};
+
+    fn named(name: &'static str, size: f32) -> FontId {
+        FontId::new(size, FontFamily::Name(name.into()))
+    }
+
+    pub fn display(size: f32) -> FontId {
+        named("nucleus-display", size)
+    }
+
+    pub fn body(size: f32) -> FontId {
+        named("nucleus-body", size)
+    }
+
+    pub fn mono(size: f32) -> FontId {
+        named("nucleus-mono", size)
+    }
+
+    pub fn mono_bold(size: f32) -> FontId {
+        named("nucleus-mono-bold", size)
+    }
+}
+
+/// Register the embedded faces. Every named family is guaranteed non-empty so
+/// layout can never panic on a missing face.
+pub fn install_fonts(ctx: &Context) {
+    let mut defs = FontDefinitions::default();
+    let text_fallback: Vec<String> = defs
+        .families
+        .get(&FontFamily::Proportional)
+        .cloned()
+        .unwrap_or_default();
+    let mono_fallback: Vec<String> = defs
+        .families
+        .get(&FontFamily::Monospace)
+        .cloned()
+        .unwrap_or_default();
+
+    // Colour emoji straight from Windows, when present.
+    let mut emoji: Vec<String> = Vec::new();
+    if let Ok(bytes) = std::fs::read("C:\\Windows\\Fonts\\seguiemj.ttf") {
+        defs.font_data.insert(
+            "nucleus-emoji".to_string(),
+            Arc::new(FontData::from_owned(bytes)),
+        );
+        emoji.push("nucleus-emoji".to_string());
+    }
+
+    let faces: [(&str, &[u8]); 3] = [
+        (
+            "nucleus-display",
+            include_bytes!("../../assets/fonts/Archivo-Variable.ttf"),
+        ),
+        (
+            "nucleus-body",
+            include_bytes!("../../assets/fonts/Inter-Variable.ttf"),
+        ),
+        (
+            "nucleus-mono",
+            include_bytes!("../../assets/fonts/GeistMono-Variable.ttf"),
+        ),
+    ];
+    for (name, bytes) in faces {
+        defs.font_data
+            .insert(name.to_string(), Arc::new(FontData::from_static(bytes)));
+    }
+
+    let text_chain = |primary: &str| -> Vec<String> {
+        let mut chain = vec![primary.to_string()];
+        chain.extend(emoji.iter().cloned());
+        chain.extend(text_fallback.iter().cloned());
+        chain
+    };
+    defs.families.insert(
+        FontFamily::Name("nucleus-body".into()),
+        text_chain("nucleus-body"),
+    );
+    defs.families.insert(
+        FontFamily::Name("nucleus-display".into()),
+        text_chain("nucleus-display"),
+    );
+    for family in ["nucleus-mono", "nucleus-mono-bold"] {
+        let mut chain = vec!["nucleus-mono".to_string()];
+        chain.extend(mono_fallback.iter().cloned());
+        defs.families.insert(FontFamily::Name(family.into()), chain);
+    }
+
+    let mut proportional = text_chain("nucleus-body");
+    proportional.extend(text_fallback.iter().cloned());
+    defs.families.insert(FontFamily::Proportional, proportional);
+
+    let mut monospace = vec!["nucleus-mono".to_string()];
+    monospace.extend(mono_fallback.iter().cloned());
+    defs.families.insert(FontFamily::Monospace, monospace);
+
+    ctx.set_fonts(defs);
+}
+
+// --- egui style -------------------------------------------------------------
+
+/// Apply a theme: colours, zeroed corners and the spacing grid.
+pub fn configure_theme(ctx: &Context, t: &Tokens) {
+    let mut visuals = if t.dark {
+        Visuals::dark()
+    } else {
+        Visuals::light()
+    };
+
+    visuals.panel_fill = t.bg;
+    visuals.window_fill = t.bg;
+    visuals.extreme_bg_color = t.sunken;
+    visuals.faint_bg_color = t.sunken;
+    visuals.override_text_color = Some(t.ink);
+    visuals.hyperlink_color = t.accent_ink;
+    visuals.window_stroke = egui::Stroke::new(1.0_f32, t.line_strong);
+    visuals.window_corner_radius = egui::CornerRadius::ZERO;
+    visuals.menu_corner_radius = egui::CornerRadius::ZERO;
+    visuals.selection.bg_fill = t.accent;
+    visuals.selection.stroke = egui::Stroke::new(1.0_f32, egui::Color32::WHITE);
+
+    let widgets = &mut visuals.widgets;
+    widgets.noninteractive.bg_fill = t.bg;
+    widgets.noninteractive.weak_bg_fill = t.bg;
+    widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0_f32, t.line);
+    widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0_f32, t.ink);
+
+    widgets.inactive.bg_fill = t.sunken;
+    widgets.inactive.weak_bg_fill = t.sunken;
+    widgets.inactive.bg_stroke = egui::Stroke::new(1.0_f32, t.line_strong);
+    widgets.inactive.fg_stroke = egui::Stroke::new(1.0_f32, t.ink);
+
+    widgets.hovered.bg_fill = t.invert_bg;
+    widgets.hovered.weak_bg_fill = t.invert_bg;
+    widgets.hovered.bg_stroke = egui::Stroke::NONE;
+    widgets.hovered.fg_stroke = egui::Stroke::new(1.0_f32, t.invert_fg);
+
+    widgets.active.bg_fill = t.invert_bg;
+    widgets.active.weak_bg_fill = t.invert_bg;
+    widgets.active.bg_stroke = egui::Stroke::NONE;
+    widgets.active.fg_stroke = egui::Stroke::new(1.0_f32, t.invert_fg);
+
+    for widget in [
+        &mut widgets.noninteractive,
+        &mut widgets.inactive,
+        &mut widgets.hovered,
+        &mut widgets.active,
+        &mut widgets.open,
+    ] {
+        widget.corner_radius = egui::CornerRadius::ZERO;
+        widget.expansion = 0.0;
+    }
+
+    ctx.set_visuals(visuals);
+
+    let mut style = (*ctx.style()).clone();
+    style.spacing.item_spacing = egui::vec2(8.0, 6.0);
+    style.spacing.button_padding = egui::vec2(12.0, 6.0);
+    style.spacing.interact_size.y = CONTROL_H;
+    style.spacing.menu_margin = egui::Margin::same(4);
+    style.spacing.scroll = egui::style::ScrollStyle::solid();
+    style
+        .text_styles
+        .insert(TextStyle::Heading, fonts::display(24.0));
+    style.text_styles.insert(TextStyle::Body, fonts::body(14.0));
+    style
+        .text_styles
+        .insert(TextStyle::Button, fonts::mono_bold(11.0));
+    style
+        .text_styles
+        .insert(TextStyle::Small, fonts::body(12.0));
+    style
+        .text_styles
+        .insert(TextStyle::Monospace, fonts::mono(13.0));
+    ctx.set_style(style);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn parses_rrggbb() {
-        assert_eq!(hex_color("#6D5EF8"), Some(ACCENT));
-        assert_eq!(hex_color("#22D3EE"), Some(CYAN));
+        assert_eq!(hex_color("#2D81FF"), Some(ACCENT));
+        assert_eq!(hex_color("2d81ff"), Some(ACCENT));
         assert_eq!(hex_color("no"), None);
         assert_eq!(hex_color("#fff"), None);
         assert_eq!(hex_color(""), None);
     }
 
     #[test]
-    fn palettes_differ_but_share_status_colours() {
-        let dark = Palette::dark();
-        let light = Palette::light();
+    fn themes_differ_but_share_the_accent() {
+        let dark = Tokens::dark();
+        let light = Tokens::light();
         assert_ne!(dark.bg, light.bg);
-        assert_eq!(dark.text, TEXT);
+        assert_eq!(dark.accent, light.accent);
+        assert!(dark.dark && !light.dark);
+    }
+
+    #[test]
+    fn tone_lookup_is_stable() {
+        let t = Tokens::dark();
+        assert_eq!(t.tone(Tone::Good), t.good);
+        assert_eq!(t.tone(Tone::Warn), t.warn);
+        assert_eq!(t.tone(Tone::Info), t.accent_ink);
+        assert_eq!(t.tone(Tone::Neutral), t.muted);
+        assert_eq!(t.tone(Tone::Faint), t.faint);
+    }
+
+    #[test]
+    fn blend_hits_both_ends() {
+        assert_eq!(blend(Color32::BLACK, Color32::WHITE, 0.0), Color32::BLACK);
+        assert_eq!(blend(Color32::BLACK, Color32::WHITE, 1.0), Color32::WHITE);
     }
 }

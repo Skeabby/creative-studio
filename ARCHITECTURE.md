@@ -81,6 +81,22 @@
 > `.nucleusapp` install/update) lands; the full spec, data model and M1/M2 semantics live in
 > `launcher-rs/SPEC.md`.
 
+> **Update #8 (2026-10-13) — launcher UI rebuilt to the reference design language.** The M1 UI was
+> functional but did not look like the launcher it takes its cues from, so it was rewritten around a
+> flat, hairline-based system: **square corners everywhere** (`CornerRadius::ZERO`), **1 px rules**
+> instead of fills or shadows, a single **accent blue `#2D81FF`**, and **mono uppercase HUD labels**
+> (11 px, ~0.15 em tracking). Two embedded token sets (`Tokens::dark()` / `Tokens::light()`) drive a
+> light/dark toggle from the header; three OFL typefaces ship inside the binary —
+> **Archivo** (display), **Inter** (body), **Geist Mono** (HUD) — with their `OFL-*.txt` licence
+> files next to them. The window is now three panels: a 48 px header (brand mark + wordmark, view
+> switch, theme toggle), a 34 px control row (filter cells with counts, search, sort), a central
+> grid (gapless 320 x 280 cards sharing their borders, hover-only lift with an app-coloured top
+> rule) or a **6-column table**, and a 34 px footer (counts, node facts, runtime log + live URLs).
+> `views.rs` owns the layout, `widgets.rs` the primitives, `theme.rs` the tokens and fonts.
+> Still green: `clippy --all-targets -- -D warnings` clean, **56 tests** (24 launcher + 32 core),
+> release binary ~12.2 MB (fonts are embedded). M2 (catalogue, `.nucleusapp`, install/update) is
+> next; the details drawer and motion hooks from the reference are deliberately not replicated yet.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---

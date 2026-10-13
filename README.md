@@ -174,3 +174,17 @@ If Nucleus is useful or just neat, a **star** helps other people find it.
 ## License
 
 [MIT](./LICENSE) © Nucleus contributors.
+
+### Bundled third-party assets
+
+The native launcher (`launcher-rs/`) embeds three typefaces, all under the SIL Open Font License
+1.1. The full licence texts ship alongside the font files in
+[`launcher-rs/crates/nucleus-launcher/assets/fonts/`](./launcher-rs/crates/nucleus-launcher/assets/fonts):
+
+| Font | Licence | Copyright |
+| --- | --- | --- |
+| Archivo | OFL 1.1 (`OFL-Archivo.txt`) | 2020 The Archivo Project Authors (Omnibus-Type) |
+| Inter | OFL 1.1 (`OFL-Inter.txt`) | 2016 The Inter Project Authors |
+| Geist Mono | OFL 1.1 (`OFL-GeistMono.txt`) | 2024 The Geist Project Authors (Vercel) |
+
+No other third-party code or design assets are used: the launcher UI is an original implementation.

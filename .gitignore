@@ -8,8 +8,8 @@ dist/
 # vendored at build time (copied from node_modules)
 apps/pdf-workbench/public/vendor/
 
-# generated shortcut icon
-assets/
+# generated shortcut icon (pack root only — the launcher's embedded OFL fonts are tracked)
+/assets/
 
 # rust (launcher-rs)
 launcher-rs/target/

@@ -115,10 +115,21 @@ pub fn kill_tree(pid: u32) {
     }
 }
 
+/// Reveal a directory in Explorer. Best-effort: errors are swallowed.
+pub fn reveal(path: &Path) {
+    #[cfg(windows)]
+    {
+        let _ = Command::new("explorer.exe").arg(path).spawn();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn spawn_node_then_kill_tree() {
         if std::env::var("NUCLEUS_SKIP_PROC_TESTS").is_ok() {
