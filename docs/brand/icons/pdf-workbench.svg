@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#E85A6C"/>
+  <!-- Back page -->
+  <rect x="175" y="155" width="170" height="210" rx="14" fill="#0B0E14" opacity="0.28"/>
+  <!-- Front page body -->
+  <path d="M148 170 L148 370 Q148 384 162 384 L322 384 Q336 384 336 370 L336 210 L296 170 Z" fill="#0B0E14"/>
+  <!-- Corner fold -->
+  <path d="M296 170 L336 210 L296 210 Z" fill="#E85A6C" opacity="0.9"/>
+  <line x1="296" y1="170" x2="296" y2="210" stroke="#E85A6C" stroke-width="2" opacity="0.3"/>
+  <!-- Text lines -->
+  <rect x="178" y="240" width="120" height="10" rx="5" fill="#FFFFFF" opacity="0.22"/>
+  <rect x="178" y="262" width="100" height="10" rx="5" fill="#FFFFFF" opacity="0.22"/>
+  <rect x="178" y="284" width="110" height="10" rx="5" fill="#FFFFFF" opacity="0.22"/>
+  <rect x="178" y="306" width="85" height="10" rx="5" fill="#FFFFFF" opacity="0.22"/>
+</svg>

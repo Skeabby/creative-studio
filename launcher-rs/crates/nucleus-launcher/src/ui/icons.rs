@@ -126,14 +126,38 @@ mod tests {
     }
 
     #[test]
-    fn brand_mark_rasterises_to_a_square() {
+    fn brand_tile_fills_its_square() {
         let (w, h, rgba) = render_svg(BRAND_SVG, 64.0).expect("brand svg must render");
         assert_eq!((w, h), (64, 64));
         assert_eq!(rgba.len(), 64 * 64 * 4);
-        // The mark is mostly transparent: the artwork must not cover the square.
+        // The app tile is a plated logo: it covers its square, corners included
+        // in the rounded plate only. So most pixels are opaque, but the four
+        // corners stay transparent.
+        let opaque = rgba.chunks(4).filter(|p| p[3] > 200).count();
+        let corner = |x: usize, y: usize| rgba[(y * 64 + x) * 4 + 3];
+        assert!(
+            opaque > (64 * 64) * 9 / 10,
+            "the plated brand tile must cover most of its square, got {opaque}"
+        );
+        let corners = [corner(0, 0), corner(63, 0), corner(0, 63), corner(63, 63)];
+        assert!(
+            corners.iter().all(|alpha| *alpha < 40),
+            "the plate corners must stay transparent (alpha), got {corners:?}"
+        );
+    }
+
+    #[test]
+    fn header_mark_leaves_transparent_margins() {
+        let (w, h, rgba) = render_svg(MARK_SVG, 64.0).expect("mark svg must render");
+        assert_eq!((w, h), (64, 64));
+        // The header mark is drawn straight onto the shell, so the artwork must
+        // not cover the square: it has to stay a mark, not a slab.
         let opaque = rgba.chunks(4).filter(|p| p[3] > 200).count();
         assert!(opaque > 0, "the mark must paint something");
-        assert!(opaque < 64 * 64, "the mark must leave transparent margins");
+        assert!(
+            opaque < (64 * 64) / 2,
+            "the mark must leave transparent margins"
+        );
     }
 
     #[test]

@@ -61,7 +61,7 @@
 > card instead of listing twice. Brand assets landed in `docs/brand/` (logo PNG + `nucleus.svg`)
 > and `docs/brand/icons/` (7 recolored SVG icons on the token palette: INK `#0B0E14`, SURFACE
 > `#151B26`, TEXT `#E7ECF5`, ACCENT `#6D5EF8`, CYAN `#22D3EE`, RUN `#34D399`, AMBER `#F59E0B`);
-> every app icon is token-native. **Provenance strip:** the handoff packed C2PA metadata
+> every app icon is token-native. *(The palette in this sentence is superseded by Update #11.)* **Provenance strip:** the handoff packed C2PA metadata
 > (81-89 % of SVG weight + a `caBX` chunk in the PNG) — `tools/strip-c2pa.mjs` removes it from
 > SVGs (`<metadata>` + `xmlns:c2pa`) and PNGs (text/`eXIf`/`caBX` chunks, CRCs re-verified) for
 > anything committed to the repo. The short TikTok promo clips keep their provenance labels on
@@ -125,6 +125,24 @@
 > **corner brackets** (`widgets::brackets`: the card's fade in with the existing hover animation, the
 > frame's are painted in a `Foreground` layer). The card's top-edge hover rule is gone. Version bumped
 > to **0.3.0** for the release; 61 tests still green, clippy clean.
+
+> **Update #11 (2026-10-13) — the designer icon set, and a publishable binary.** The brand assets now
+> come from the designer's handoff instead of our own token recolouring, which supersedes the palette
+> sentence of #6. The handoff's plates were re-tinted to the *category* colours the launcher already
+> uses (`widgets::category_color`) so an icon, its card and its roadmap entry finally agree: System
+> violet `#6D5EF8` (white nucleus), Text `#8AB4F8`, Pdf `#E85A6C`, Audio `#34D399`, Image `#F472B6`,
+> Layout `#C084FC`, Vector `#22D3EE`, Video `#F59E0B`. Every glyph is ink `#0B0E14` except on the
+> violet plate, where it is white — measured, not guessed (4.56:1 white vs 4.24:1 ink). The plate
+> geometry, and the header mark, are untouched: `mark.svg` must stay unplated to read at 26 px on both
+> themes. `docs/brand/logo.png` carries the violet plate, `docs/brand/icons/` gained the Notes and PDF
+> Workbench icons (7 app icons beside the launcher's `nucleus.svg`), and C2PA metadata is stripped
+> exactly as in #6.
+> **Release hygiene.** A plain `cargo build --release` bakes the build machine's absolute paths into
+> the artifact through `file!()` and panic locations; the published v0.3.0 binary contained 722
+> occurrences of the maintainer's profile path. Releases are now built by `scripts/build-release.ps1`,
+> which passes `--remap-path-prefix` (the prefix is read from `$env:USERPROFILE`, so it is never
+> committed either), and the release profile sets `strip = true`. The script verifies the result and
+> fails if the account name survives in the binary, so this cannot ship again unnoticed.
 
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 

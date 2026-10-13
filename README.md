@@ -92,6 +92,10 @@ To build the launcher from source instead (needs a Rust toolchain):
 cargo build --release --manifest-path launcher-rs\Cargo.toml
 ```
 
+Published binaries are built with `scripts\build-release.ps1` instead: a plain release build bakes the
+build machine's paths into the artifact through `file!()`/panic locations, and that script remaps them
+away (and refuses to hand you a binary that still contains them).
+
 Click **Open** on *PDF Workbench* — it starts on a free port in its own window. Close the
 launcher window to shut the whole nucleus down. Node.js must be on `PATH` for the apps themselves.
 

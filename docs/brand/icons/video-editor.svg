@@ -1,27 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#151B26"/>
+  <rect width="512" height="512" rx="112" fill="#F59E0B"/>
   <!-- Film strip body -->
-  <rect x="108" y="178" width="296" height="180" rx="14" fill="#E7ECF5"/>
+  <rect x="108" y="178" width="296" height="180" rx="14" fill="#0B0E14"/>
   <!-- Sprocket holes top -->
-  <rect x="108" y="178" width="296" height="36" rx="0" fill="#0B0E14" opacity="0.08"/>
-  <rect x="108" y="358" width="296" height="0" rx="0" fill="#0B0E14" opacity="0.08"/>
+  <rect x="108" y="178" width="296" height="36" rx="0" fill="#FFFFFF" opacity="0.08"/>
+  <rect x="108" y="358" width="296" height="0" rx="0" fill="#FFFFFF" opacity="0.08"/>
   <!-- Sprocket top -->
-  <rect x="130" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="174" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="218" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="262" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="306" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="350" y="184" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
+  <rect x="130" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="174" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="218" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="262" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="306" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="350" y="184" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
   <!-- Sprocket bottom -->
-  <rect x="108" y="322" width="296" height="36" rx="0" fill="#0B0E14" opacity="0.08"/>
-  <rect x="130" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="174" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="218" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="262" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="306" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
-  <rect x="350" y="328" width="22" height="24" rx="6" fill="#0B0E14" opacity="0.3"/>
+  <rect x="108" y="322" width="296" height="36" rx="0" fill="#FFFFFF" opacity="0.08"/>
+  <rect x="130" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="174" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="218" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="262" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="306" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
+  <rect x="350" y="328" width="22" height="24" rx="6" fill="#FFFFFF" opacity="0.3"/>
   <!-- Play button circle background -->
-  <circle cx="256" cy="268" r="60" fill="#0B0E14" opacity="0.18"/>
+  <circle cx="256" cy="268" r="60" fill="#F59E0B" opacity="0.25"/>
   <!-- Play triangle -->
-  <polygon points="238,242 238,296 292,269" fill="#6D5EF8" opacity="0.9"/>
+  <polygon points="238,242 238,296 292,269" fill="#F59E0B"/>
 </svg>

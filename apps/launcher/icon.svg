@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#0B0E14"/>
+  <rect width="512" height="512" rx="112" fill="#6D5EF8"/>
   <g transform="translate(256,256)">
     <!-- Center nucleus -->
-    <circle r="36" fill="#6D5EF8"/>
+    <circle r="36" fill="white"/>
     <!-- Orbit ring 1 -->
-    <ellipse rx="110" ry="42" fill="none" stroke="#E7ECF5" stroke-width="8" stroke-opacity="0.35" transform="rotate(-30)"/>
-    <circle cx="110" cy="0" r="16" fill="#22D3EE" transform="rotate(-30)"/>
+    <ellipse rx="110" ry="42" fill="none" stroke="white" stroke-width="8" stroke-opacity="0.35" transform="rotate(-30)"/>
+    <circle cx="110" cy="0" r="16" fill="white" transform="rotate(-30)"/>
     <!-- Orbit ring 2 -->
-    <ellipse rx="110" ry="42" fill="none" stroke="#E7ECF5" stroke-width="8" stroke-opacity="0.35" transform="rotate(90)"/>
-    <circle cx="110" cy="0" r="16" fill="#22D3EE" transform="rotate(90)"/>
+    <ellipse rx="110" ry="42" fill="none" stroke="white" stroke-width="8" stroke-opacity="0.35" transform="rotate(90)"/>
+    <circle cx="110" cy="0" r="16" fill="white" transform="rotate(90)"/>
     <!-- Orbit ring 3 -->
-    <ellipse rx="110" ry="42" fill="none" stroke="#E7ECF5" stroke-width="8" stroke-opacity="0.35" transform="rotate(210)"/>
-    <circle cx="110" cy="0" r="16" fill="#22D3EE" transform="rotate(210)"/>
+    <ellipse rx="110" ry="42" fill="none" stroke="white" stroke-width="8" stroke-opacity="0.35" transform="rotate(210)"/>
+    <circle cx="110" cy="0" r="16" fill="white" transform="rotate(210)"/>
   </g>
 </svg>

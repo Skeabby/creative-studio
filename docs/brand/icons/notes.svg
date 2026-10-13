@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#8AB4F8"/>
+  <!-- Notebook body -->
+  <rect x="138" y="132" width="236" height="280" rx="18" fill="#0B0E14"/>
+  <!-- Spine line -->
+  <rect x="138" y="132" width="32" height="280" rx="0" fill="#FFFFFF" opacity="0.10"/>
+  <rect x="138" y="132" width="32" height="280" rx="0" fill="none"/>
+  <!-- Rings on spine -->
+  <circle cx="154" cy="196" r="11" fill="none" stroke="#FFFFFF" stroke-width="5" opacity="0.25"/>
+  <circle cx="154" cy="256" r="11" fill="none" stroke="#FFFFFF" stroke-width="5" opacity="0.25"/>
+  <circle cx="154" cy="316" r="11" fill="none" stroke="#FFFFFF" stroke-width="5" opacity="0.25"/>
+  <!-- Text lines -->
+  <rect x="196" y="188" width="148" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <rect x="196" y="216" width="138" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <rect x="196" y="244" width="148" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <rect x="196" y="272" width="118" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <rect x="196" y="300" width="130" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <rect x="196" y="328" width="90" height="10" rx="5" fill="#FFFFFF" opacity="0.2"/>
+  <!-- Small accent dot (cursor) -->
+  <rect x="196" y="356" width="16" height="10" rx="5" fill="#FFFFFF" opacity="0.55"/>
+</svg>

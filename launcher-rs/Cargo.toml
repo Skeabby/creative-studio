@@ -18,3 +18,9 @@ ureq = { version = "2", default-features = false, features = ["tls"] }
 eframe = { version = "0.32", default-features = false, features = ["glow", "default_fonts"] }
 egui = { version = "0.32", default-features = false, features = ["default_fonts"] }
 thiserror = "2"
+
+# Published binaries are built with `scripts/build-release.ps1`, which also maps
+# the build machine's absolute paths (`--remap-path-prefix`) out of the binary.
+# `strip` keeps the download small and drops the last local symbol table.
+[profile.release]
+strip = true
