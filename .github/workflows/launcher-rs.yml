@@ -22,5 +22,7 @@ jobs:
         working-directory: launcher-rs
       - run: cargo test --workspace
         working-directory: launcher-rs
+      # docs/scoreboard.md (Rust section) must match what cargo actually measures.
+      - run: node tools/scoreboard.mjs --check rust
       - run: cargo build --release
         working-directory: launcher-rs

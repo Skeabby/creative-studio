@@ -124,7 +124,7 @@
 > (`widgets::icon_tile`) — and the hovered card plus the four corners of the window frame wear
 > **corner brackets** (`widgets::brackets`: the card's fade in with the existing hover animation, the
 > frame's are painted in a `Foreground` layer). The card's top-edge hover rule is gone. Version bumped
-> to **0.3.0** for the release; 61 tests still green, clippy clean.
+> to **0.3.0** for the release; 62 tests green at the tag, clippy clean.
 
 > **Update #11 (2026-10-13) — the designer icon set, and a publishable binary.** The brand assets now
 > come from the designer's handoff instead of our own token recolouring, which supersedes the palette
@@ -185,6 +185,11 @@ browser-native already (TS). Heavy modules (RAW, video, GPU compositing) go behi
 
 ## 2. Repo structure
 
+> **Target layout.** Anything marked `(future)`, plus the packages that are not in the checkout yet
+> (`control-rpc`, `control-federation` was added in 2026-10, `renderer`, `manifests`, `ui-kit`,
+> `sdk`, `testkit`), is a plan — not code. For what exists today see the monorepo layout in
+> [`README.md`](./README.md) and the measured numbers in [`docs/scoreboard.md`](./docs/scoreboard.md).
+
 ```
 nucleus/
 ├─ package.json / pnpm-workspace.yaml / turbo.json / tsconfig.base.json
@@ -202,8 +207,9 @@ nucleus/
 │  ├─ renderer/      # rendering abstraction + backends (cpu/canvas/webgpu)
 │  ├─ control/       # ControlServer: transport-agnostic session/invoke/subscribe
 │  ├─ control-cli/   # frontend #1: CLI
-│  ├─ control-rpc/   # frontend #2: JSON-RPC 2.0 (pipe + WS)
-│  ├─ control-mcp/   # frontend #3: MCP server (stdio + HTTP)
+│  ├─ control-mcp/   # frontend #2: MCP server (stdio; shipped 2026-10) + per-app tools
+│  ├─ control-federation/ # frontend #3: MCP server across apps, one undo journal (shipped 2026-10)
+│  ├─ control-rpc/   # (planned) JSON-RPC 2.0 over pipe + WS — README only today
 │  ├─ launcher/      # discovery/install/update/sign
 │  ├─ manifests/     # manifest types, validation, registry client
 │  ├─ ui-kit/        # shared UI + design tokens

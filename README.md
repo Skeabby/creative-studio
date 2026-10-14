@@ -25,8 +25,8 @@
 
 > **The GUI, the terminal, and your AI agent all run the exact same commands.**
 > Nucleus hosts small creative apps as plugins, and every app exposes one command bus through a web
-> UI, a CLI, a JSON-RPC endpoint and an MCP server. Drive it by clicking, scripting, or prompting —
-> the results are identical.
+> UI, a CLI and an MCP server. Drive it by clicking, scripting, or prompting — the results are
+> identical. A federated MCP server can drive several apps in one session with a single undo stack.
 
 <!-- TODO: record a 20-40s demo GIF, drop it in docs/, and replace this note. -->
 <p align="center"><em>Demo GIF coming soon (<code>docs/demo.gif</code>)</em></p>
@@ -113,17 +113,18 @@ Double-click **Nucleus** like any other Windows app.
 ## How it works
 
 ```
-                ┌──────────────────────────── frontends ────────────────────────────┐
-                │  launcher UI   CLI (control-cli)   JSON-RPC   MCP (control-mcp)     │
-                └───────────────┬───────────────┬──────────────┬──────────────┬───────┘
-                                │               │              │              │
-                                └───────────────┴──────┬───────┴──────────────┘
-                                                       ▼
-                                          ControlServer  (transport-agnostic)
-                                                       ▼
-                              CommandBus  ·  document model  ·  undo/redo  ·  serialization
-                                                       ▲
-                                    app command packs (e.g. @nucleus/pdf)
+  frontends
+    launcher UI          click it
+    control-cli          script it
+    control-mcp          prompt one app
+    control-federation   prompt every app in one session, one undo stack
+                                │
+                                ▼
+                    ControlServer (transport-agnostic)
+                                ▼
+        CommandBus · document model · undo/redo · serialization
+                                ▲
+                app command packs (e.g. @nucleus/pdf)
 ```
 
 The **launcher** scans `apps/*/nucleus.app.json` and `%APPDATA%\Nucleus\apps`, picks a free port
@@ -133,21 +134,23 @@ a native window at the app root. It stays alive so closing the launcher shuts do
 ## Monorepo layout
 
 ```
-packages/core         # document model, command bus, undo/redo, serialization
-packages/control      # ControlServer: invoke / describe / list / history
-packages/control-cli  # CLI frontend
-packages/control-rpc  # JSON-RPC frontend (Phase 2 placeholder)
-packages/control-mcp  # MCP frontend (dependency-free JSON-RPC 2.0 over stdio)
-packages/pdf          # @nucleus/pdf command pack (import / rotate / move / remove / export)
-packages/launcher     # app discovery, manifests, process runtime, windows, CLI
-apps/launcher         # the launcher window (grid/table UI + /api/apps)
-apps/pdf-workbench    # app #1: local HTTP server + web UI
-apps/notes            # app #2: Markdown notes on the command bus
-schemas/              # JSON Schema - the source of truth for codegen
-tools/                # codegen, schema validators
-shell/                # native window host (WinForms + WebView2)
-scripts/              # shell build, release build, screenshots, shortcut installer
-launcher-rs/          # native Rust launcher: core crate + egui/eframe UI crate
+packages/core              # document model, command bus, undo/redo, serialization
+packages/control           # ControlServer: invoke / describe / list / history
+packages/control-cli       # CLI frontend
+packages/control-mcp       # MCP frontend (dependency-free JSON-RPC 2.0 over stdio)
+packages/control-federation # MCP frontend across apps: one session, one undo stack
+packages/control-rpc       # planned JSON-RPC frontend — README only, no code yet
+packages/pdf               # @nucleus/pdf command pack (import / rotate / move / remove / export)
+packages/notes             # @nucleus/notes command pack (commands, views, markdown export)
+packages/launcher          # app discovery, manifests, process runtime, windows, CLI
+apps/launcher              # the launcher window (grid/table UI + /api/apps)
+apps/pdf-workbench         # app #1: local HTTP server + web UI
+apps/notes                 # app #2: Markdown notes on the command bus
+schemas/                   # JSON Schema - the source of truth for codegen
+tools/                     # codegen, schema validators, scoreboard
+shell/                     # native window host (WinForms + WebView2)
+scripts/                   # shell build, release build, screenshots, shortcut installer
+launcher-rs/               # native Rust launcher: core crate + egui/eframe UI crate
 ```
 
 Every app is just a folder with a `nucleus.app.json` manifest describing what it is and how to
@@ -156,21 +159,24 @@ launch it — that is all the launcher needs to discover and run it.
 ## Commands
 
 ```bash
-npm run verify            # build + typecheck + test (via turbo)
+npm run verify            # build + typecheck + test (via turbo) + cross-app demo
 npm run build
 npm run test
+npm run scoreboard        # regenerate docs/scoreboard.md from real command output
 npm start                 # open the Nucleus launcher
 npm run nucleus -- list   # list discovered apps
 npm run nucleus -- open nucleus.pdf-workbench
 npm run nucleus -- serve  # launcher server only, no window
 npm run start:pdf         # run PDF Workbench directly
-npm run mcp               # run the MCP server over stdio
+npm run mcp               # run the per-app MCP server over stdio
+npm run mcp:federation    # run the cross-app MCP server over stdio
+npm run demo:cross-app    # replay the two-app session and its unified undo
 ```
 
 The native launcher is a cargo workspace (`launcher-rs/`). From that directory:
 
 ```bash
-cargo test                                           # 61 unit tests (core + UI)
+cargo test                                           # 62 unit tests (core + UI)
 cargo clippy --all-targets -- -D warnings            # lints are part of the contract
 cargo run --release -p nucleus-launcher -- --smoke   # headless smoke test (apps + planned + node)
 cargo run --release -p nucleus-launcher -- --list     # discovered vs planned apps
@@ -179,10 +185,23 @@ cargo run --release -p nucleus-launcher              # open the native window
 
 ## Agent-ready (MCP)
 
-The nucleus MCP server is registered in [`.opencode/mcp.json`](./.opencode/mcp.json) and exposes
-curated PDF tools plus a generic `cmd_invoke` escape hatch — see
-[`.opencode/README.md`](./.opencode/README.md). Any MCP-capable agent can drive the same
-command bus as the GUI, so the whole suite is scriptable *and* promptable.
+Two MCP servers are registered in [`.opencode/mcp.json`](./.opencode/mcp.json) — see
+[`.opencode/README.md`](./.opencode/README.md):
+
+- `nucleus` — `control-mcp`: curated PDF tools plus a generic `cmd_invoke` escape hatch for one app.
+- `nucleus-federation` — `control-federation`: every joined app in one session, with a **single undo
+  stack** across them (`apps_list`, `cmd_list`, `cmd_describe`, `cmd_invoke`, `state_get`,
+  `undo_status`, `undo`, `redo` + each app's tools). Details in
+  [`docs/cross-app.md`](./docs/cross-app.md).
+
+Any MCP-capable agent can drive the same command bus as the GUI, so the whole suite is scriptable
+*and* promptable.
+
+## Measured claims
+
+[`docs/scoreboard.md`](./docs/scoreboard.md) is generated from real command output — test counts,
+the cross-app demo checks, the MCP tool list. CI fails if it drifts from the code, so every number
+in this README has a command behind it.
 
 ## Roadmap
 

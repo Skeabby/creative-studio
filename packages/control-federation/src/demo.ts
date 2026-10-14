@@ -5,6 +5,7 @@
  * Scenario (no mocks, no scripted UI): an agent edits the PDF Workbench AND the
  * Notes app in one session, then unwinds BOTH with a single unified undo path.
  */
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PDFDocument } from "pdf-lib";
@@ -133,7 +134,7 @@ async function main(): Promise<void> {
   check("page 1 still rotated 90°", afterRedo.pages[0]?.rotation === 90);
   check("note restored", afterRedo.notes === 1);
 
-  // 8 — export a real PDF from the edited state
+  // 8 — export a real PDF from the edited state, then read it back
   if (process.argv.includes("--export")) {
     const target = join(tmpdir(), "nucleus-cross-app-demo.pdf");
     step(8, `pdf.export → ${target}`);
@@ -142,7 +143,12 @@ async function main(): Promise<void> {
       writtenTo: string;
     };
     out(`   → ${exported.byteLength} bytes written to ${exported.writtenTo}`);
-    check("exported PDF is non-trivial", exported.byteLength > 500);
+
+    const written = await PDFDocument.load(readFileSync(target));
+    const rotation = written.getPage(0)?.getRotation().angle ?? -1;
+    out(`   → ${written.getPageCount()} pages read back · page 1 rotation ${rotation}°`);
+    check("exported PDF reopens with 3 pages", written.getPageCount() === 3);
+    check("exported page 1 kept its 90° rotation", rotation === 90);
   }
 
   out("");

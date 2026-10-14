@@ -16,3 +16,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      # docs/scoreboard.md must match what the code actually measures.
+      - run: npm run scoreboard -- --check ts
