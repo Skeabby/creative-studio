@@ -4,6 +4,11 @@
       "type": "local",
       "command": ["node", "packages/control-mcp/dist/index.js"],
       "enabled": true
+    },
+    "nucleus-federation": {
+      "type": "local",
+      "command": ["node", "packages/control-federation/dist/mcp.js"],
+      "enabled": true
     }
   }
 }

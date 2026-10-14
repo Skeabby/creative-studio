@@ -1,0 +1,32 @@
+{
+  "name": "@nucleus/control-federation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "nucleus-federation-mcp": "./dist/mcp.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@nucleus/control": "*",
+    "@nucleus/core": "*",
+    "@nucleus/notes": "*",
+    "@nucleus/pdf": "*"
+  },
+  "devDependencies": {
+    "pdf-lib": "^1.17.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  }
+}

@@ -40,6 +40,8 @@
     "start:launcher": "npm --workspace @nucleus/launcher-app run start",
     "start:pdf": "npm --workspace @nucleus/pdf-workbench run start",
     "mcp": "node packages/control-mcp/dist/index.js",
+    "mcp:federation": "node packages/control-federation/dist/mcp.js",
+    "demo:cross-app": "node packages/control-federation/dist/demo.js",
     "shell": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-shell.ps1",
     "shell:fetch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-webview2.ps1",
     "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-shortcut.ps1"

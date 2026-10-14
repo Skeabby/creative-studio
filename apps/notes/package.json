@@ -1,12 +1,13 @@
 {
-  "name": "@nucleus/notes",
+  "name": "@nucleus/notes-app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./dist/server.js",
   "dependencies": {
     "@nucleus/control": "*",
-    "@nucleus/core": "*"
+    "@nucleus/core": "*",
+    "@nucleus/notes": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
