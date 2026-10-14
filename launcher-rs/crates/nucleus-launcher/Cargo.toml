@@ -10,8 +10,6 @@ description = "Nucleus desktop launcher - a light, Windows-first launcher for th
 nucleus-launcher-core = { path = "../nucleus-launcher-core" }
 serde.workspace = true
 serde_json.workspace = true
-sha2.workspace = true
-zip.workspace = true
 ureq.workspace = true
 eframe.workspace = true
 egui.workspace = true
