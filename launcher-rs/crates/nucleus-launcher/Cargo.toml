@@ -15,3 +15,11 @@ eframe.workspace = true
 egui.workspace = true
 thiserror.workspace = true
 resvg = "0.48.1"
+
+# M2 — `.nucleusapp` install: streaming hash + zip read/unpack.
+# `zip`'s `deflate-flate2` feature alone does not activate the optional flate2
+# dependency; `deflate` does (and pulls zopfli too). `flate2` is pinned here so
+# the rust backend is always present, matching `deflate`.
+sha2 = "0.10"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }

@@ -10,12 +10,14 @@ compile_error!("nucleus-launcher currently supports Windows only (M1)");
 
 mod app;
 mod discovery;
+mod install;
 mod paths;
 mod ports;
 mod probe;
 mod process;
 mod runtime;
 mod ui;
+mod verify;
 mod window;
 
 use std::path::PathBuf;
@@ -31,6 +33,8 @@ fn main() {
     let mut smoke = false;
     let mut list = false;
     let mut repo: Option<PathBuf> = None;
+    let mut install: Option<PathBuf> = None;
+    let mut sha256: Option<String> = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -46,13 +50,40 @@ fn main() {
                     }
                 }
             }
+            "--install" => {
+                index += 1;
+                match args.get(index) {
+                    Some(path) => install = Some(PathBuf::from(path)),
+                    None => {
+                        eprintln!("error: --install requires a path to a .nucleusapp");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--sha256" => {
+                index += 1;
+                match args.get(index) {
+                    Some(hash) => sha256 = Some(hash.clone()),
+                    None => {
+                        eprintln!("error: --sha256 requires a hex digest");
+                        std::process::exit(2);
+                    }
+                }
+            }
             other => {
                 eprintln!("error: unknown argument `{other}`");
-                eprintln!("usage: nucleus-launcher [--smoke] [--list] [--repo <path>]");
+                eprintln!(
+                    "usage: nucleus-launcher [--smoke] [--list] [--repo <path>] \
+                     [--install <.nucleusapp>] [--sha256 <hex>]"
+                );
                 std::process::exit(2);
             }
         }
         index += 1;
+    }
+    if sha256.is_some() && install.is_none() {
+        eprintln!("error: --sha256 only applies to --install");
+        std::process::exit(2);
     }
 
     // --- Resolve the repository + data locations ----------------------------
@@ -63,6 +94,32 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    // --- CLI: install a `.nucleusapp` into the user apps root ---------------
+    if let Some(archive) = install {
+        let apps_root = paths::nucleus_data_dir().join("apps"); // %APPDATA%\Nucleus\apps
+        match install::install_archive(&archive, &apps_root, sha256.as_deref()) {
+            Ok(outcome) => {
+                let summary = json!({
+                    "installed": true,
+                    "id": outcome.id,
+                    "version": outcome.version,
+                    "dir": outcome.dir,
+                    "files": outcome.files,
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".into())
+                );
+                return;
+            }
+            Err(err) => {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            }
+        }
+    }
+
     let discovery = discovery::discover(&paths);
     let node = process::known_node();
 

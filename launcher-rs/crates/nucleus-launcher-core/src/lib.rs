@@ -18,6 +18,7 @@ pub mod manifest;
 pub mod model;
 pub mod roadmap;
 pub mod status;
+pub mod verify;
 pub mod version;
 
 pub use catalog::{Catalog, CatalogEntry, parse_catalog};
@@ -30,4 +31,8 @@ pub use manifest::{
 pub use model::{AppMeta, AppSource};
 pub use roadmap::{Card, RoadmapEntry, merge_roadmap};
 pub use status::{AppStatus, derive_status};
+pub use verify::{
+    DIGESTS_FILE, DigestError, Digests, normalize_sha256, parse_digests, sanitize_entry_path,
+    sha256_hex,
+};
 pub use version::is_update;

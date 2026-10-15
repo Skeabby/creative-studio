@@ -225,6 +225,8 @@ pub fn is_valid_id(id: &str) -> bool {
 /// Order of checks: JSON parse → required fields (`id`, `name`, `version`,
 /// `coreApiVersion`, `launch`) → id pattern → [`validate`].
 pub fn parse_manifest(json: &str) -> Result<Manifest, ManifestError> {
+    // Tolerate a Windows BOM (Notepad / PowerShell `Set-Content` add one).
+    let json = json.strip_prefix('\u{feff}').unwrap_or(json);
     let manifest: Manifest = serde_json::from_str(json)?;
 
     for (field, value) in [
@@ -326,6 +328,12 @@ mod tests {
         assert_eq!(launch.args, vec!["dist/server.js".to_string()]);
         assert_eq!(launch.ready_path.as_deref(), Some("/api/state"));
         assert_eq!(launch.window, Some(true));
+    }
+
+    #[test]
+    fn tolerates_a_utf8_bom() {
+        let json = format!("\u{feff}{PDF_MANIFEST}");
+        assert!(parse_manifest(&json).is_ok());
     }
 
     #[test]
