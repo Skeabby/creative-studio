@@ -71,7 +71,7 @@ different route:
 |-----|--------|--------------|
 | **Nucleus launcher** | alpha | The **native Rust launcher** (`launcher-rs/`): every app in one window — grid and table views, category filter, search, Open / Stop, live log, dark + light themes, its own flat hairline design. |
 | **PDF Workbench** | beta | Merge, reorder, rotate, delete pages, undo/redo, save/open projects, export. |
-| **Notes** | alpha | Markdown notes, notebooks with undo/redo and full-text search. |
+| **Notes** | alpha | Markdown notes with undo/redo, live preview and Markdown export. |
 | Image Editor | planned | Layers, masks, non-destructive adjustments and export. |
 | Vector Editor | planned | Bézier paths, shapes and vector export. |
 | Video Editor | planned | Timeline editing, colour and audio mixing. |

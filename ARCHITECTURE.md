@@ -144,6 +144,26 @@
 > committed either), and the release profile sets `strip = true`. The script verifies the result and
 > fails if the account name survives in the binary, so this cannot ship again unnoticed.
 
+> **Update #12 (2026-10-17) — M0 truth & safety.** An external audit re-verified against the code
+> found a set of gaps that had been described as done. Corrections land in this update:
+> **Notes was overclaimed** in #6 and in the README — it is a single Markdown note list with
+> undo/redo, preview and export; there are no notebooks/folders and no full-text search. The README
+> row now says what the code does (finding F9). The two apps **bound every interface** rather than
+> loopback (F5): `server.listen(PORT)` became `server.listen(PORT, "127.0.0.1", …)`. Both apps gained
+> a shared **request guard** (`src/guard.ts`) that enforces a Host allowlist, a same-origin check,
+> `application/json` on writes and a per-launch bearer token (or `nt` cookie) — closing the
+> localhost-reachable, page-driven command bus (F6). The launcher (Rust and TS) mints the token,
+> passes it as `NUCLEUS_TOKEN` plus `?t=` in the window URL, and sends it on the readiness probe;
+> the app swaps `?t=` for an `HttpOnly` cookie and redirects. Notes' newest-first sort was inverted
+> (F1), its Markdown preview escaped *after* inserting markup (F3, XSS via notes an agent wrote),
+> and its editor could clobber unsent typing when a save round-trip landed mid-keystroke (F4, now
+> guarded by `localRev`/`sentRev`). Autosave flooded undo — one step per keystroke (F2) — so
+> `CommandBus` history entries now carry a coalescing key and window; `note.update` declares
+> `coalesce: { key: (p) => p.id, windowMs: 2000 }` and a burst collapses into one undo step. The
+> remaining audit findings (F7 persistence, F8 accent drift, F10 anonymous history, F11 no param
+> schemas, F12 non-deterministic ids, F13 PDF-only MCP, F14 duplicated HTTP boilerplate, F15 PDF
+> gaps) are tracked for their milestones, not silently dropped.
+
 **Codename:** `nucleus` · monorepo root `nucleus` · packages `@nucleus/*`
 
 ---
