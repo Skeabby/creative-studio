@@ -46,6 +46,12 @@ different route:
   window with taskbar identity and its own icon — compiled with the `csc.exe` already on Windows.
 - **One core to rule the suite.** `@nucleus/core` owns the document model, a command bus and
   undo/redo. Frontends are thin adapters, so features land once and become available everywhere.
+- **Every app, one session, one undo.** A federated MCP frontend joins the PDF and Notes apps
+  behind a single surface: 12 unified commands and **one** undo stack across both, so an agent can
+  reorder a PDF and edit a note, then undo both in order (`npm run demo:cross-app`).
+- **Apps install themselves, verified.** A `.nucleusapp` archive is SHA-256 checked, unpacked to a
+  temp directory, verified **file by file** against a digest ledger, then swapped in atomically with
+  rollback — zip-slip, decompression bombs and case-collisions are all refused (`--install`).
 - **A native launcher, no Electron.** `launcher-rs/` is a single Rust binary (egui/eframe, ~12 MB,
   no runtime installed): manifest discovery, Open / Stop, grid and table views, category filter,
   search, dark/light themes, a `--smoke`/`--list` CLI — and a flat hairline design of its own:
@@ -72,7 +78,7 @@ different route:
 ## Quickstart (Windows)
 
 The launcher is the native Rust binary; the apps it hosts are Node/TypeScript. Easiest path: grab
-`nucleus-launcher-v0.3.0-win64.zip` from the [latest release](https://github.com/Skeabby/nucleus/releases/latest),
+`nucleus-launcher-v0.4.0-alpha-win64.zip` from the [latest release](https://github.com/Skeabby/nucleus/releases/latest),
 then build the apps once:
 
 ```powershell
@@ -207,9 +213,10 @@ in this README has a command behind it.
 ## Roadmap
 
 The phased plan, design decisions and risks live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-Short version: launcher (native Rust, `v0.3.0`) + first three apps (**done**) → **M2**: catalogue and
-`.nucleusapp` install/update so a release runs without the repo checkout → more apps → JSON-RPC
-frontend → packaging for cross-platform native bundles.
+Where we are: the native Rust launcher + first three apps (**done**), plus cross-app federation and
+the `.nucleusapp` install engine, **shipped as `v0.4.0-alpha`**. Next: wire the catalogue and
+install/update into the launcher UI, build the **Image Editor** (the second proof app), then the
+JSON-RPC frontend and packaging for cross-platform native bundles.
 
 ## Contributing
 

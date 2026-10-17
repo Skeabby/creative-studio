@@ -381,7 +381,8 @@ Command surface: `pdf.open`, `pdf.split`, `pdf.merge`, `pdf.rotate`, `pdf.reorde
 - **D10** resolve OneDrive cache hazard in Phase 0.
 - **D11** the launcher wears its own signature (violet chrome, orbit tiles, brackets) rather than
   reproducing the reference UI; the accent is never reused as an app colour.
-- **D12** releases: `v0.3.0` (native Rust launcher) is *Latest*; `v0.1.0` keeps the TypeScript
+- **D12** releases: `v0.4.0-alpha` (cross-app federation + `.nucleusapp` install engine, published as
+  a *pre-release*) is *Latest*; `v0.3.0` is the last stable launcher; `v0.1.0` keeps the TypeScript
   monorepo; superseded launcher releases are deleted rather than accumulated.
 
 ---
