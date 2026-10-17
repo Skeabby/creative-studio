@@ -107,8 +107,7 @@ function sortTable(list) {
 
 // --- category grouping -----------------------------------------------------
 const GROUP_DEFS = [
-  { title: "Image & Design", cats: ["image", "vector"] },
-  { title: "Media", cats: ["video", "audio"] },
+  { title: "Image & Design", cats: ["image"] },
   { title: "Documents", cats: ["pdf", "text", "layout"] },
   { title: "Data & Engineering", cats: ["data", "cad"] },
   { title: "System", cats: ["system"] },

@@ -351,8 +351,8 @@ mod tests {
     #[test]
     fn planned_count_only_counts_planned_cards() {
         let roadmap = vec![nucleus_launcher_core::RoadmapEntry {
-            id: "nucleus.audio".into(),
-            name: "Audio".into(),
+            id: "nucleus.image-editor".into(),
+            name: "Image Editor".into(),
             description: None,
             category: None,
             inspired_by: None,

@@ -20,9 +20,9 @@
 > `nucleus` CLI. A desktop shortcut makes it launch like a native app. Tauri remains the
 > Phase 4 upgrade path for a real always-on shell.
 >
-> Apps now: **PDF Workbench** (real: `packages/pdf` + `apps/pdf-workbench`) plus the launcher
-> itself; 6 further apps (Image, Vector, Video, Audio, Slides, Notes) are declared as *planned*
-> entries in `apps/launcher/roadmap.json`.
+> Apps now: **PDF Workbench** (real: `packages/pdf` + `apps/pdf-workbench`) and **Notes**
+> (`apps/notes`) plus the launcher itself; **Image Editor** is the one further app declared as a
+> *planned* entry in `apps/launcher/roadmap.json`.
 
 > **Update #3 (2026-10-10) — native windows, no browser.** The launcher (and every app window)
 > no longer opens in Edge/Chrome. `shell/nucleus-shell.cs` is a ~150-line WinForms + **WebView2**
@@ -42,8 +42,8 @@
 > (Apps / Coming soon), a prominent Open button, a running dot, and a refined light/dark palette.
 
 > **Update #5 (2026-10-10) — launcher UX, tier 1.** The launcher grew the features that make it feel
-> like a real app store: cards are grouped **by category** (Image & Design / Media / Documents /
-> System), the table is **sortable** on every column (7 columns incl. inspired-by and source),
+> like a real app store: cards are grouped **by category** (Image & Design / Documents / System),
+> the table is **sortable** on every column (7 columns incl. inspired-by and source),
 > **arrow keys** move a selection and Enter opens, **Ctrl+K** opens a **command palette** that also
 > lists each app's command-bus capabilities, and clicking a card opens a **detail drawer** showing
 > description, capabilities/permissions chips and the exact `npm run nucleus -- open <id>` command.
@@ -73,7 +73,7 @@
 > architecture (two crates, egui/eframe 0.32 glow backend), so nothing is copied from ArtCraft. M1
 > (discovery + Open/Stop) is **built, green and verified locally**: `cargo check` and
 > `clippy --all-targets -- -D warnings` clean, **47 unit tests passing** (incl. a real node
-> spawn/kill-tree), `--smoke` reports 3 real apps + 5 planned (8 cards) and locates node, and the
+> spawn/kill-tree), `--smoke` reports 3 real apps + 1 planned (4 cards) and locates node, and the
 > release binary is ~6.8 MB. To link it, MSVC Build Tools + rustup were installed (rustup 1.29.1,
 > rustc/cargo 1.99.0 stable-msvc); CI runs on `windows-latest` via
 > `.github/workflows/launcher-rs.yml` (fmt + clippy + tests + release build, path-filtered on
@@ -343,7 +343,7 @@ error/CAS), is deterministic for golden tests, has real utility, and a permissiv
 Command surface: `pdf.open`, `pdf.split`, `pdf.merge`, `pdf.rotate`, `pdf.reorder`, `pdf.extract`,
 `pdf.redact`, `pdf.metadata`, `pdf.export`, `render.pageToPng`.
 
-**Why not start with the image/vector editor?** It front-loads GPU/rendering risk — exactly what we deferred. Prove control first, then rendering. Image editor is proof #2.
+**Why not start with the image editor?** It front-loads GPU/rendering risk — exactly what we deferred. Prove control first, then rendering. Image editor is proof #2.
 
 ---
 

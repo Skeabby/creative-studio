@@ -121,7 +121,7 @@ describe("roadmap merge", () => {
   const entries = [
     { id: "nucleus.pdf-workbench", name: "PDF Workbench" },
     { id: "nucleus.notes", name: "Notes" },
-    { id: "nucleus.slides", name: "Slides" },
+    { id: "nucleus.image-editor", name: "Image Editor" },
   ];
 
   it("keeps every roadmap entry when nothing is discovered yet", () => {
@@ -130,7 +130,7 @@ describe("roadmap merge", () => {
 
   it("drops a discovered app from the roadmap (no double listing)", () => {
     const planned = mergeRoadmap(new Set(["nucleus.notes"]), entries);
-    expect(planned.map((e) => e.id)).toEqual(["nucleus.pdf-workbench", "nucleus.slides"]);
+    expect(planned.map((e) => e.id)).toEqual(["nucleus.pdf-workbench", "nucleus.image-editor"]);
   });
 
   it("is unaffected by ids that are not in the roadmap", () => {
@@ -139,7 +139,7 @@ describe("roadmap merge", () => {
   });
 
   it("keeps entry order for remaining apps", () => {
-    const planned = mergeRoadmap(new Set(["nucleus.pdf-workbench", "nucleus.slides"]), entries);
+    const planned = mergeRoadmap(new Set(["nucleus.pdf-workbench", "nucleus.image-editor"]), entries);
     expect(planned.map((e) => e.id)).toEqual(["nucleus.notes"]);
   });
 });

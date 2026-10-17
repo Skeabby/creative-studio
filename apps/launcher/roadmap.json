@@ -7,41 +7,5 @@
     "inspiredBy": "Photoshop",
     "emoji": "🖼️",
     "color": "#F472B6"
-  },
-  {
-    "id": "nucleus.vector",
-    "name": "Vector Editor",
-    "description": "Bézier paths, shapes and vector export.",
-    "category": "vector",
-    "inspiredBy": "Illustrator",
-    "emoji": "✒️",
-    "color": "#22D3EE"
-  },
-  {
-    "id": "nucleus.video",
-    "name": "Video Editor",
-    "description": "Timeline editing, colour and audio mixing.",
-    "category": "video",
-    "inspiredBy": "Premiere Pro",
-    "emoji": "🎬",
-    "color": "#F59E0B"
-  },
-  {
-    "id": "nucleus.audio",
-    "name": "Audio Editor",
-    "description": "Waveform editing, effects chain and mastering.",
-    "category": "audio",
-    "inspiredBy": "Audition",
-    "emoji": "🎧",
-    "color": "#34D399"
-  },
-  {
-    "id": "nucleus.slides",
-    "name": "Slides",
-    "description": "Decks with layouts, transitions and present mode.",
-    "category": "layout",
-    "inspiredBy": "PowerPoint",
-    "emoji": "📊",
-    "color": "#F59E0B"
   }
 ]

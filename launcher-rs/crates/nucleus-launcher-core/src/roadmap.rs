@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn merge_preserves_order_and_dedups() {
         let apps = vec![app("nucleus.launcher"), app("nucleus.notes")];
-        let roadmap = vec![planned("nucleus.notes"), planned("nucleus.audio")];
+        let roadmap = vec![planned("nucleus.notes"), planned("nucleus.image-editor")];
         let cards = merge_roadmap(&apps, &roadmap);
         assert_eq!(cards.len(), 3);
         assert!(matches!(cards[0], Card::App(_)));
@@ -161,6 +161,6 @@ mod tests {
                 Card::App(_) => None,
             })
             .collect();
-        assert_eq!(planned_ids, vec!["nucleus.audio"]);
+        assert_eq!(planned_ids, vec!["nucleus.image-editor"]);
     }
 }

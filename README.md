@@ -73,10 +73,6 @@ different route:
 | **PDF Workbench** | beta | Merge, reorder, rotate, delete pages, undo/redo, save/open projects, export. |
 | **Notes** | alpha | Markdown notes with undo/redo, live preview and Markdown export. |
 | Image Editor | planned | Layers, masks, non-destructive adjustments and export. |
-| Vector Editor | planned | Bézier paths, shapes and vector export. |
-| Video Editor | planned | Timeline editing, colour and audio mixing. |
-| Audio Editor | planned | Waveform editing, effects chain and mastering. |
-| Slides | planned | Decks with layouts, transitions and present mode. |
 
 ## Quickstart (Windows)
 
