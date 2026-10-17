@@ -99,9 +99,8 @@ pub fn parse_digests(json: &str) -> Result<Digests, DigestError> {
     }
     let mut files = BTreeMap::new();
     for (path, value) in raw {
-        let clean = sanitize_entry_path(&path).ok_or_else(|| DigestError::UnsafePath {
-            path: path.clone(),
-        })?;
+        let clean = sanitize_entry_path(&path)
+            .ok_or_else(|| DigestError::UnsafePath { path: path.clone() })?;
         let hash = normalize_sha256(&value).ok_or(DigestError::InvalidHash {
             path: path.clone(),
             value,
@@ -219,7 +218,9 @@ mod tests {
         let digests = parse_digests(json).expect("sanitisable key");
         assert!(digests.get("payload/win/a.js").is_some());
         assert!(matches!(
-            parse_digests(r#"{"payload/../evil":"sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}"#),
+            parse_digests(
+                r#"{"payload/../evil":"sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}"#
+            ),
             Err(DigestError::UnsafePath { .. })
         ));
     }
@@ -268,7 +269,11 @@ mod tests {
             "payload/COM1.js",
             "payload/sub/LPT9",
         ] {
-            assert_eq!(sanitize_entry_path(device), None, "should reject `{device}`");
+            assert_eq!(
+                sanitize_entry_path(device),
+                None,
+                "should reject `{device}`"
+            );
         }
         // Ordinary names that merely contain a dot are fine.
         assert_eq!(

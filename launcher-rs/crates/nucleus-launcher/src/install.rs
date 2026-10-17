@@ -212,9 +212,7 @@ pub fn install_archive(
         fs::rename(&app_dir, &stash)?;
     }
     if let Err(err) = fs::rename(&tmp, &app_dir) {
-        if had_previous
-            && let Err(rollback) = fs::rename(&stash, &app_dir)
-        {
+        if had_previous && let Err(rollback) = fs::rename(&stash, &app_dir) {
             return Err(InstallError::RollbackFailed {
                 id,
                 source: rollback,
@@ -634,7 +632,10 @@ mod tests {
         );
         let apps = root.join("apps");
         let err = install_archive(&archive, &apps, None).unwrap_err();
-        assert!(matches!(err, InstallError::PathCollision { .. }), "got {err:?}");
+        assert!(
+            matches!(err, InstallError::PathCollision { .. }),
+            "got {err:?}"
+        );
         assert!(!apps.join("nucleus.notes").exists());
         let _ = fs::remove_dir_all(&root);
     }
