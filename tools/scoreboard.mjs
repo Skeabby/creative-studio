@@ -23,6 +23,13 @@ const file = join(root, "docs", "scoreboard.md");
 /** Strip ANSI colour codes (turbo/vitest/cargo colourise their output). */
 const strip = (text) => text.replace(/\u001b\[[0-9;]*m/g, "");
 
+/**
+ * Collapse CRLF/CR to LF before comparing. Git checks the file out with CRLF on
+ * Windows (`core.autocrlf=true`) while this script always generates LF, so a
+ * byte comparison would report a false "STALE" on identical content.
+ */
+const normalizeEol = (text) => (text ?? "").replace(/\r\n?/g, "\n");
+
 function run(command, cwd = root) {
   // `2>&1` keeps stdout and stderr interleaved in real order — cargo prints
   // "Running unittests ..." on stderr and "test result: ..." on stdout, and the
@@ -231,7 +238,7 @@ const sections = {
 };
 
 if (which === null) {
-  writeFileSync(file, assemble(existing, sections), "utf8");
+  writeFileSync(file, assemble(existing === null ? null : normalizeEol(existing), sections), "utf8");
   const ts = sections.ts.split("\n")[0];
   process.stdout.write(`scoreboard: ${file}\n  ${ts}\n  ${sections.rust.split("\n")[0] ?? "(cargo unavailable: Rust section left untouched)"}\n`);
   process.exit(0);
@@ -240,11 +247,12 @@ if (which === null) {
 let failed = false;
 for (const [name, body] of Object.entries(sections)) {
   if (body === null) continue;
-  const current = sectionOf(existing ?? "", name);
-  if (current === body) {
+  const current = normalizeEol(sectionOf(existing ?? "", name));
+  const expected = normalizeEol(body);
+  if (current === expected) {
     process.stdout.write(`scoreboard: section "${name}" is up to date\n`);
   } else {
-    process.stderr.write(`scoreboard: section "${name}" is STALE — regenerate with \`npm run scoreboard\`\n${firstDifference(current, body)}\n`);
+    process.stderr.write(`scoreboard: section "${name}" is STALE — regenerate with \`npm run scoreboard\`\n${firstDifference(current, expected)}\n`);
     failed = true;
   }
 }
