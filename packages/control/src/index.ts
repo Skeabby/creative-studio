@@ -1,4 +1,10 @@
-import { CommandBus, NucleusError, type DocumentState, type ErrorKind } from "@nucleus/core";
+import {
+  CommandBus,
+  NucleusError,
+  type DocumentState,
+  type ErrorKind,
+  type InvokeOptions,
+} from "@nucleus/core";
 
 /**
  * Transport-agnostic control surface. CLI, JSON-RPC and MCP frontends are all
@@ -60,9 +66,16 @@ export class ControlServer {
         }
 
         case "command.invoke": {
-          const { name, params } = (request.params ?? {}) as { name?: string; params?: unknown };
+          const { name, params, coalesceKey } = (request.params ?? {}) as {
+            name?: string;
+            params?: unknown;
+            coalesceKey?: string;
+          };
           if (!name) throw new NucleusError("validation", "command.invoke requires params.name");
-          const result = this.#bus.invoke(name, this.#state, params);
+          // Forward the optional coalescing key so a burst of autosaves (F2)
+          // collapses into a single undo entry.
+          const options: InvokeOptions = coalesceKey !== undefined ? { coalesceKey } : {};
+          const result = this.#bus.invoke(name, this.#state, params, options);
           return { ok: true, result };
         }
 

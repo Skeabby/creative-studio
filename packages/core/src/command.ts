@@ -44,6 +44,14 @@ export interface CommandDescriptor<P = unknown, R = unknown> {
 export interface InvokeOptions {
   actor?: Actor;
   dryRun?: boolean;
+  /**
+   * Merge this command into the previous history entry when both share the key
+   * and land within the coalescing window (F2). Used so a burst of autosaves
+   * collapses into a single undo instead of one step per keystroke.
+   */
+  coalesceKey?: string;
+  /** Window (ms) in which a shared `coalesceKey` merges. Default 800. */
+  coalesceWindowMs?: number;
 }
 
 export interface InvokeResult<R = unknown> {
@@ -52,10 +60,29 @@ export interface InvokeResult<R = unknown> {
   docVersion: number;
 }
 
+/** One undo/redo entry. `key`/`at` drive coalescing of bursts (F2). */
+interface HistoryEntry {
+  patches: Patch[];
+  key?: string;
+  at: number;
+}
+
+/**
+ * Merge a later inverse onto an earlier one for coalescing. The earliest patch
+ * per node wins, so undoing the merged entry restores the state from before the
+ * *first* command in the burst.
+ */
+function mergeInverse(earlier: Patch[], later: Patch[]): Patch[] {
+  const byNode = new Map<string, Patch>();
+  for (const patch of later) byNode.set(patch.nodeId, patch);
+  for (const patch of earlier) byNode.set(patch.nodeId, patch);
+  return [...byNode.values()];
+}
+
 export class CommandBus {
   readonly #handlers = new Map<string, CommandDescriptor<any, any>>();
-  readonly #history: Patch[][] = [];
-  readonly #redo: Patch[][] = [];
+  readonly #history: HistoryEntry[] = [];
+  readonly #redo: HistoryEntry[] = [];
   readonly #defaultActor: Actor;
 
   constructor(defaultActor: Actor = { kind: "system", id: "core" }) {
@@ -96,13 +123,35 @@ export class CommandBus {
 
     if (!options.dryRun && patches.length > 0) {
       const inverse = applyPatches(state, patches);
-      if (descriptor.reversible !== false) this.#history.push(inverse);
+      if (descriptor.reversible !== false) this.#pushHistory(inverse, options);
       // A fresh edit invalidates any redo branch.
       this.#redo.length = 0;
       state.docVersion += 1;
     }
 
     return { result: outcome.result as R, applied: patches.length, docVersion: state.docVersion };
+  }
+
+  /**
+   * Record an undo entry, coalescing into the previous one when the caller
+   * supplied a `coalesceKey` that matches and we are still inside the window.
+   */
+  #pushHistory(patches: Patch[], options: InvokeOptions): void {
+    const now = Date.now();
+    const window = options.coalesceWindowMs ?? 800;
+    const last = this.#history[this.#history.length - 1];
+    const key = options.coalesceKey;
+    if (
+      key !== undefined &&
+      last !== undefined &&
+      last.key === key &&
+      now - last.at <= window
+    ) {
+      last.patches = mergeInverse(last.patches, patches);
+      last.at = now;
+      return;
+    }
+    this.#history.push({ patches, key, at: now });
   }
 
   canUndo(): boolean {
@@ -114,19 +163,19 @@ export class CommandBus {
   }
 
   undo(state: DocumentState): boolean {
-    const inverse = this.#history.pop();
-    if (!inverse) return false;
-    const redo = applyPatches(state, inverse);
-    this.#redo.push(redo);
+    const entry = this.#history.pop();
+    if (!entry) return false;
+    const redo = applyPatches(state, entry.patches);
+    this.#redo.push({ patches: redo, at: Date.now() });
     state.docVersion += 1;
     return true;
   }
 
   redo(state: DocumentState): boolean {
-    const redo = this.#redo.pop();
-    if (!redo) return false;
-    const inverse = applyPatches(state, redo);
-    this.#history.push(inverse);
+    const entry = this.#redo.pop();
+    if (!entry) return false;
+    const inverse = applyPatches(state, entry.patches);
+    this.#history.push({ patches: inverse, at: Date.now() });
     state.docVersion += 1;
     return true;
   }

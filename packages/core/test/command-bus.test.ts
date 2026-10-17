@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CommandBus, createDocument, registerCoreCommands, NucleusError } from "../src/index.js";
 
 function setup() {
@@ -94,5 +94,54 @@ describe("@nucleus/core command bus", () => {
     const { doc, bus } = setup();
     expect(bus.undo(doc)).toBe(false);
     expect(bus.redo(doc)).toBe(false);
+  });
+
+  it("coalesces a burst of edits sharing a key into one undo step (F2)", () => {
+    const { doc, bus } = setup();
+    bus.invoke("doc.addNode", doc, { type: "layer", props: { fill: "red" } });
+    // A typing/save burst: three updates under the same coalesce key.
+    bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.2 } }, { coalesceKey: "note:n1" });
+    bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.5 } }, { coalesceKey: "note:n1" });
+    bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.9 } }, { coalesceKey: "note:n1" });
+    expect(doc.nodes["n1"]?.props).toEqual({ fill: "red", opacity: 0.9 });
+
+    // One undo returns to the state before the whole burst.
+    expect(bus.undo(doc)).toBe(true);
+    expect(doc.nodes["n1"]?.props).toEqual({ fill: "red" });
+    // The add is still a separate step.
+    expect(bus.undo(doc)).toBe(true);
+    expect(Object.keys(doc.nodes)).toHaveLength(0);
+  });
+
+  it("does not coalesce edits with different keys", () => {
+    const { doc, bus } = setup();
+    bus.invoke("doc.addNode", doc, { type: "layer", props: { fill: "red" } });
+    bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.2 } }, { coalesceKey: "a" });
+    bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.5 } }, { coalesceKey: "b" });
+    expect(bus.undo(doc)).toBe(true);
+    expect(doc.nodes["n1"]?.props).toEqual({ fill: "red", opacity: 0.2 });
+    expect(bus.undo(doc)).toBe(true);
+    expect(doc.nodes["n1"]?.props).toEqual({ fill: "red" });
+  });
+
+  it("starts a new step once the coalescing window has elapsed", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+      const { doc, bus } = setup();
+      bus.invoke("doc.addNode", doc, { type: "layer", props: { fill: "red" } });
+      bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.2 } }, { coalesceKey: "k" });
+      // A pause past the window starts a fresh undo step.
+      vi.setSystemTime(new Date("2026-01-01T00:00:02.000Z"));
+      bus.invoke("doc.updateNodeProps", doc, { id: "n1", props: { opacity: 0.5 } }, { coalesceKey: "k" });
+      expect(bus.undo(doc)).toBe(true);
+      expect(doc.nodes["n1"]?.props).toEqual({ fill: "red", opacity: 0.2 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 });
