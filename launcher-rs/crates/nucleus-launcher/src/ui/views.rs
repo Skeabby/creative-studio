@@ -100,6 +100,12 @@ pub enum Action {
     Open,
     Stop,
     Reveal,
+    /// Download + install a catalogue app (M2).
+    Install,
+    /// Update an installed catalogue app to the catalogue version (M2).
+    Update,
+    /// Remove a catalogue-installed app (M2).
+    Uninstall,
 }
 
 /// Node availability, disclosed honestly.
@@ -349,6 +355,7 @@ fn search_field(ui: &mut Ui, t: &Tokens, query: &mut String) -> Response {
 // ---------------------------------------------------------------------------
 
 /// The central scrolling area: a card grid or a sortable table.
+#[allow(clippy::too_many_arguments)]
 pub fn main_area(
     ui: &mut Ui,
     t: &Tokens,
@@ -357,6 +364,7 @@ pub fn main_area(
     state: &mut ViewState<'_>,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
+    busy: bool,
 ) {
     let filter = *state.filter;
     let search: String = state.search.clone();
@@ -410,14 +418,14 @@ pub fn main_area(
             egui::ScrollArea::vertical()
                 .id_salt("nucleus-grid")
                 .auto_shrink([false, false])
-                .show(ui, |ui| grid(ui, t, &list, runtime, actions, icons));
+                .show(ui, |ui| grid(ui, t, &list, runtime, actions, icons, busy));
         }
         View::Table => {
             egui::ScrollArea::both()
                 .id_salt("nucleus-table")
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    table(ui, t, &list, runtime, actions, icons, state.sort)
+                    table(ui, t, &list, runtime, actions, icons, state.sort, busy)
                 });
         }
     }
@@ -478,6 +486,7 @@ fn grid(
     runtime: &Runtime,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
+    busy: bool,
 ) {
     let available = ui.available_width();
     let (columns, card_w, rows) = grid_geometry(available, list.len());
@@ -494,7 +503,7 @@ fn grid(
             ),
             vec2(card_w, CARD_H),
         );
-        card(ui, t, cell, entry, index, runtime, actions, icons);
+        card(ui, t, cell, entry, index, runtime, actions, icons, busy);
     }
 
     // The lattice: one rule per card edge, drawn once thanks to the shared grid.
@@ -530,6 +539,7 @@ fn card(
     runtime: &Runtime,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
+    busy: bool,
 ) {
     let id = card.id().to_string();
     let running = runtime.is_running(&id);
@@ -641,21 +651,25 @@ fn card(
     ui.scope_builder(UiBuilder::new().max_rect(actions_rect), |ui| {
         ui.spacing_mut().item_spacing = vec2(8.0, 0.0);
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-            card_actions(ui, t, card, running, status, actions);
+            card_actions(ui, t, card, running, status, busy, actions);
         });
     });
 }
 
-/// The action row of a card: one primary button plus a "reveal" glyph.
+/// The action row of a card: a primary button, optional install/update/remove
+/// controls, plus a "reveal" glyph.
 fn card_actions(
     ui: &mut Ui,
     t: &Tokens,
     card: &Card,
     running: bool,
     status: AppStatus,
+    busy: bool,
     actions: &mut Vec<(String, Action)>,
 ) {
     let id = card.id().to_string();
+    let has_glyph = matches!(card, Card::App(_));
+    let secondary_w = 84.0;
     let main_width = (ui.available_width() - CONTROL_H - 8.0).clamp(120.0, 240.0);
 
     if running {
@@ -664,13 +678,48 @@ fn card_actions(
         }
     } else {
         match status {
-            AppStatus::Installed | AppStatus::UpdateAvailable => {
-                if widgets::button(ui, t, "Open", ButtonKind::Primary, true, main_width).clicked() {
+            AppStatus::UpdateAvailable => {
+                let width = (main_width - secondary_w - 8.0).max(96.0);
+                if widgets::button(ui, t, "Open", ButtonKind::Secondary, true, width).clicked() {
                     actions.push((id.clone(), Action::Open));
+                }
+                // Install-type actions queue on a single worker: park them
+                // while another job runs instead of failing on submit.
+                let update =
+                    widgets::button(ui, t, "Update", ButtonKind::Primary, !busy, secondary_w);
+                if busy {
+                    update.on_hover_text("A job is already running");
+                } else if update.clicked() {
+                    actions.push((id.clone(), Action::Update));
+                }
+            }
+            AppStatus::Installed => {
+                let width = if uninstallable(card) {
+                    secondary_w
+                } else {
+                    main_width
+                };
+                if widgets::button(ui, t, "Open", ButtonKind::Primary, true, width).clicked() {
+                    actions.push((id.clone(), Action::Open));
+                }
+                if uninstallable(card) {
+                    let remove =
+                        widgets::button(ui, t, "Remove", ButtonKind::Secondary, !busy, secondary_w);
+                    if busy {
+                        remove.on_hover_text("A job is already running");
+                    } else if remove.clicked() {
+                        actions.push((id.clone(), Action::Uninstall));
+                    }
                 }
             }
             AppStatus::NotInstalled if matches!(card, Card::App(_)) => {
-                widgets::button(ui, t, "Install", ButtonKind::Primary, false, main_width);
+                let install =
+                    widgets::button(ui, t, "Install", ButtonKind::Primary, !busy, main_width);
+                if busy {
+                    install.on_hover_text("A job is already running");
+                } else if install.clicked() {
+                    actions.push((id.clone(), Action::Install));
+                }
             }
             AppStatus::NotInstalled => {
                 widgets::button(ui, t, "Planned", ButtonKind::Secondary, false, main_width);
@@ -688,13 +737,24 @@ fn card_actions(
         }
     }
 
-    let revealable = matches!(card, Card::App(_));
-    if widgets::glyph_button(ui, t, "…", revealable)
-        .on_hover_text("Reveal in Explorer")
-        .clicked()
+    if has_glyph
+        && widgets::glyph_button(ui, t, "…", true)
+            .on_hover_text("Reveal in Explorer")
+            .clicked()
     {
         actions.push((id, Action::Reveal));
     }
+}
+
+/// Only catalogue-installed apps (in user data, with an install record) may be
+/// removed — never repository apps and never a roadmap placeholder.
+fn uninstallable(card: &Card) -> bool {
+    matches!(
+        card,
+        Card::App(app)
+            if app.source == nucleus_launcher_core::AppSource::UserData
+                && app.installed.is_some()
+    )
 }
 
 fn app_icon(ui: &mut Ui, t: &Tokens, icons: &mut IconStore, card: &Card, size: f32) {
@@ -763,6 +823,7 @@ fn blend(from: Color32, to: Color32, amount: f32) -> Color32 {
 
 /// A table with hairline row dividers, no zebra striping, and columns sortable
 /// from their headers.
+#[allow(clippy::too_many_arguments)]
 fn table(
     ui: &mut Ui,
     t: &Tokens,
@@ -771,6 +832,7 @@ fn table(
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
     sort: &mut (SortKey, bool),
+    busy: bool,
 ) {
     let fixed = COL_CATEGORY + COL_STATUS + COL_VERSION + COL_SOURCE + COL_ACTIONS;
     let width = ui.available_width().max(fixed + 240.0);
@@ -860,7 +922,9 @@ fn table(
     for (index, card) in list.iter().enumerate() {
         let top = area.top() + TABLE_HEADER_H + index as f32 * TABLE_ROW_H;
         let row = Rect::from_min_size(pos2(area.left(), top), vec2(width, TABLE_ROW_H));
-        table_row(ui, t, row, &offsets, &widths, card, runtime, actions, icons);
+        table_row(
+            ui, t, row, &offsets, &widths, card, runtime, actions, icons, busy,
+        );
         ui.painter().hline(row.x_range(), row.bottom(), stroke);
     }
 }
@@ -876,6 +940,7 @@ fn table_row(
     runtime: &Runtime,
     actions: &mut Vec<(String, Action)>,
     icons: &mut IconStore,
+    busy: bool,
 ) {
     let running = runtime.is_running(card.id());
     let status = if running {
@@ -971,7 +1036,7 @@ fn table_row(
         ui.spacing_mut().item_spacing = vec2(8.0, 0.0);
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
             ui.add_space(4.0);
-            card_actions(ui, t, card, running, status, actions);
+            card_actions(ui, t, card, running, status, busy, actions);
         });
     });
 }

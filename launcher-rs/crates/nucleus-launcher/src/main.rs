@@ -9,8 +9,12 @@
 compile_error!("nucleus-launcher currently supports Windows only (M1)");
 
 mod app;
+mod catalogue;
 mod discovery;
 mod install;
+mod jobs;
+mod net;
+mod pack;
 mod paths;
 mod ports;
 mod probe;
@@ -35,6 +39,12 @@ fn main() {
     let mut repo: Option<PathBuf> = None;
     let mut install: Option<PathBuf> = None;
     let mut sha256: Option<String> = None;
+    let mut install_app: Option<String> = None;
+    let mut uninstall_app: Option<String> = None;
+    let mut pack_dir: Option<PathBuf> = None;
+    let mut gen_catalog_dir: Option<PathBuf> = None;
+    let mut out: Option<PathBuf> = None;
+    let mut base_url: Option<String> = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -70,11 +80,74 @@ fn main() {
                     }
                 }
             }
+            "--install-app" => {
+                index += 1;
+                match args.get(index) {
+                    Some(id) => install_app = Some(id.clone()),
+                    None => {
+                        eprintln!("error: --install-app requires a catalogue app id");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--uninstall-app" => {
+                index += 1;
+                match args.get(index) {
+                    Some(id) => uninstall_app = Some(id.clone()),
+                    None => {
+                        eprintln!("error: --uninstall-app requires an app id");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--pack" => {
+                index += 1;
+                match args.get(index) {
+                    Some(path) => pack_dir = Some(PathBuf::from(path)),
+                    None => {
+                        eprintln!("error: --pack requires an app directory");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--gen-catalog" => {
+                index += 1;
+                match args.get(index) {
+                    Some(path) => gen_catalog_dir = Some(PathBuf::from(path)),
+                    None => {
+                        eprintln!("error: --gen-catalog requires a directory of .nucleusapp files");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--out" => {
+                index += 1;
+                match args.get(index) {
+                    Some(path) => out = Some(PathBuf::from(path)),
+                    None => {
+                        eprintln!("error: --out requires a file path");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            "--base-url" => {
+                index += 1;
+                match args.get(index) {
+                    Some(url) => base_url = Some(url.clone()),
+                    None => {
+                        eprintln!("error: --base-url requires a URL or folder prefix");
+                        std::process::exit(2);
+                    }
+                }
+            }
             other => {
                 eprintln!("error: unknown argument `{other}`");
                 eprintln!(
                     "usage: nucleus-launcher [--smoke] [--list] [--repo <path>] \
-                     [--install <.nucleusapp>] [--sha256 <hex>]"
+                     [--install <.nucleusapp>] [--sha256 <hex>] [--install-app <id>] \
+                     [--uninstall-app <id>] \
+                     [--pack <dir> --out <file>] [--gen-catalog <dir> --out <file> \
+                     [--base-url <prefix>]]"
                 );
                 std::process::exit(2);
             }
@@ -84,6 +157,51 @@ fn main() {
     if sha256.is_some() && install.is_none() {
         eprintln!("error: --sha256 only applies to --install");
         std::process::exit(2);
+    }
+
+    // --- CLI: pack a `.nucleusapp` / generate a catalogue (no repo needed) ---
+    if let Some(dir) = pack_dir {
+        let Some(out) = out else {
+            eprintln!("error: --pack requires --out <file>");
+            std::process::exit(2);
+        };
+        match pack::pack_app_dir(&dir, &out) {
+            Ok(outcome) => {
+                let summary = json!({
+                    "packed": true,
+                    "id": outcome.id,
+                    "version": outcome.version,
+                    "out": outcome.out,
+                    "files": outcome.files,
+                    "bytes": outcome.bytes,
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".into())
+                );
+                return;
+            }
+            Err(err) => {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            }
+        }
+    }
+    if let Some(dir) = gen_catalog_dir {
+        let Some(out) = out else {
+            eprintln!("error: --gen-catalog requires --out <file>");
+            std::process::exit(2);
+        };
+        match pack::gen_catalog(&dir, base_url.as_deref(), "Skeabby/nucleus", &out) {
+            Ok(count) => {
+                println!("wrote {count} app(s) to {}", out.display());
+                return;
+            }
+            Err(err) => {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            }
+        }
     }
 
     // --- Resolve the repository + data locations ----------------------------
@@ -120,7 +238,88 @@ fn main() {
         }
     }
 
-    let discovery = discovery::discover(&paths);
+    // --- Load the catalogue (embedded mirror + optional overrides) ----------
+    let data_dir = paths::nucleus_data_dir();
+    let (catalog, catalog_warnings) = catalogue::load(&data_dir);
+
+    // --- CLI: install a catalogue app by id (download → verify → install) ---
+    if let Some(id) = install_app {
+        let Some(entry) = catalog.apps.iter().find(|entry| entry.id == id).cloned() else {
+            eprintln!("error: `{id}` is not in the catalogue");
+            std::process::exit(1);
+        };
+        let url = entry.url.clone().unwrap_or_else(|| {
+            format!(
+                "https://github.com/{}/releases/latest/download/{}",
+                entry.repo, entry.release_asset
+            )
+        });
+        let cache = data_dir.join("cache");
+        let dest = cache.join(&entry.release_asset);
+        let cancel = std::sync::atomic::AtomicBool::new(false);
+        let mut last = 0u64;
+        let mut progress = |done: u64, total: Option<u64>| {
+            // One line at the start and at the end; never spam the console.
+            if done == 0 || total.is_some_and(|t| done >= t) || done >= last + 8 * 1024 * 1024 {
+                last = done;
+                match total {
+                    Some(total) => eprintln!("downloading {id}: {done}/{total} bytes"),
+                    None => eprintln!("downloading {id}: {done} bytes"),
+                }
+            }
+        };
+        if let Err(err) = net::download_archive(&url, &dest, &mut progress, &cancel) {
+            eprintln!("error: {err}");
+            std::process::exit(1);
+        }
+        let apps_root = data_dir.join("apps");
+        match install::install_archive(&dest, &apps_root, entry.sha256.as_deref()) {
+            Ok(outcome) => {
+                let summary = json!({
+                    "installed": true,
+                    "id": outcome.id,
+                    "version": outcome.version,
+                    "dir": outcome.dir,
+                    "files": outcome.files,
+                    "source": url,
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".into())
+                );
+                return;
+            }
+            Err(err) => {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // --- CLI: remove a catalogue-installed app -----------------------------
+    if let Some(id) = uninstall_app {
+        let apps_root = data_dir.join("apps");
+        match install::uninstall_app(&id, &apps_root) {
+            Ok(()) => {
+                let summary = json!({
+                    "uninstalled": true,
+                    "id": id,
+                    "dir": apps_root.join(&id),
+                });
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&summary).unwrap_or_else(|_| "{}".into())
+                );
+                return;
+            }
+            Err(err) => {
+                eprintln!("error: {err}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    let discovery = discovery::discover(&paths, &catalog);
     let node = process::known_node();
 
     if smoke {
@@ -145,7 +344,11 @@ fn main() {
             Some(path) => NodeFact::Found(path),
             None => NodeFact::Missing,
         },
-        errors: discovery.errors.clone(),
+        errors: {
+            let mut errors = catalog_warnings;
+            errors.extend(discovery.errors.clone());
+            errors
+        },
     };
 
     let mut viewport = egui::ViewportBuilder::default()
@@ -166,7 +369,7 @@ fn main() {
         native_options,
         Box::new(move |cc| {
             Ok(Box::new(app::LauncherApp::new(
-                cc, discovery, runtime, events, facts,
+                cc, discovery, runtime, events, facts, paths, catalog,
             )))
         }),
     );

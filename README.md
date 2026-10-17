@@ -51,7 +51,10 @@ different route:
   reorder a PDF and edit a note, then undo both in order (`npm run demo:cross-app`).
 - **Apps install themselves, verified.** A `.nucleusapp` archive is SHA-256 checked, unpacked to a
   temp directory, verified **file by file** against a digest ledger, then swapped in atomically with
-  rollback — zip-slip, decompression bombs and case-collisions are all refused (`--install`).
+  rollback — zip-slip, decompression bombs and case-collisions are all refused. The launcher does the
+  whole loop itself: it builds bundles (`--pack`), writes a `catalog.json` (`--gen-catalog`), and
+  installs / updates / removes through the catalogue (`--install-app`, `--uninstall-app`, and the
+  Install / Update / Remove buttons in the UI).
 - **A native launcher, no Electron.** `launcher-rs/` is a single Rust binary (egui/eframe, ~12 MB,
   no runtime installed): manifest discovery, Open / Stop, grid and table views, category filter,
   search, dark/light themes, a `--smoke`/`--list` CLI — and a flat hairline design of its own:
@@ -184,13 +187,20 @@ npm run demo:cross-app    # replay the two-app session and its unified undo
 The native launcher is a cargo workspace (`launcher-rs/`). From that directory:
 
 ```bash
-cargo test                                           # 80 unit tests (core + launcher)
+cargo test                                           # 105 unit tests (core + launcher)
 cargo clippy --all-targets -- -D warnings            # lints are part of the contract
 cargo run --release -p nucleus-launcher -- --smoke   # headless smoke test (apps + planned + node)
 cargo run --release -p nucleus-launcher -- --list     # discovered vs planned apps
-cargo run --release -p nucleus-launcher -- --install <app.nucleusapp>  # install an app (M2)
+cargo run --release -p nucleus-launcher -- --install <app.nucleusapp>  # install a local archive
+cargo run --release -p nucleus-launcher -- --install-app <id>          # catalogue install (download → verify → install)
+cargo run --release -p nucleus-launcher -- --uninstall-app <id>        # remove a catalogue-installed app
+cargo run --release -p nucleus-launcher -- --pack apps/notes --out notes.nucleusapp  # build a .nucleusapp
+cargo run --release -p nucleus-launcher -- --gen-catalog mirror/apps --out mirror/catalog.json  # write a catalogue
 cargo run --release -p nucleus-launcher              # open the native window
 ```
+
+Setting `NUCLEUS_CATALOG` to a `catalog.json` (or any folder paired with its `apps/`) makes an
+install run entirely offline: relative asset URLs resolve against the catalogue's own directory.
 
 ## Agent-ready (MCP)
 
@@ -215,10 +225,12 @@ in this README has a command behind it.
 ## Roadmap
 
 The phased plan, design decisions and risks live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-Where we are: the native Rust launcher + first three apps (**done**), plus cross-app federation and
-the `.nucleusapp` install engine, **shipped as `v0.4.0-alpha`**. Next: wire the catalogue and
-install/update into the launcher UI, build the **Image Editor** (the second proof app), then the
-JSON-RPC frontend and packaging for cross-platform native bundles.
+Where we are: the native Rust launcher + first three apps (**done**), cross-app federation, and the
+full `.nucleusapp` catalogue loop — bundle builder, catalogue generator, verified install / update /
+remove in both the CLI and the UI, with an offline (no-network) test — **shipped as `v0.4.0-alpha`**.
+Next: publish the first app bundles so the committed `catalog.json` lists real, downloadable apps,
+then build the **Image Editor** (the second proof app), the JSON-RPC frontend and packaging for
+cross-platform native bundles.
 
 ## Contributing
 

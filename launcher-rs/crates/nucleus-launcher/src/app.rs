@@ -7,19 +7,35 @@ use std::time::Duration;
 
 use egui::{CentralPanel, Frame, Margin, RichText, Stroke, TopBottomPanel};
 
-use nucleus_launcher_core::{AppStatus, Card, derive_status};
+use nucleus_launcher_core::{AppStatus, Card, Catalog, derive_status};
 
 use crate::discovery::Discovery;
+use crate::jobs::{JobEvent, Jobs, Stage};
+use crate::paths::Paths;
 use crate::runtime::{Event, Runtime};
 use crate::ui::icons::IconStore;
 use crate::ui::theme::{FOOTER_H, HEADER_H, fonts};
 use crate::ui::{Action, Counts, Facts, Filter, SortKey, Tokens, View, ViewState, configure_theme};
+
+/// Live state of the running background job, for the footer.
+struct JobStatus {
+    id: String,
+    label: String,
+    stage: Option<Stage>,
+    done: u64,
+    total: Option<u64>,
+}
 
 /// The Nucleus launcher app window.
 pub struct LauncherApp {
     discovery: Discovery,
     runtime: Runtime,
     events: Receiver<Event>,
+    jobs: Jobs,
+    job_events: Receiver<JobEvent>,
+    job: Option<JobStatus>,
+    paths: Paths,
+    catalog: Catalog,
     log: VecDeque<String>,
     search: String,
     view: View,
@@ -33,19 +49,28 @@ pub struct LauncherApp {
 const LOG_CAP: usize = 40;
 
 impl LauncherApp {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         cc: &eframe::CreationContext<'_>,
         discovery: Discovery,
         runtime: Runtime,
         events: Receiver<Event>,
         facts: Facts,
+        paths: Paths,
+        catalog: Catalog,
     ) -> Self {
         crate::ui::install_fonts(&cc.egui_ctx);
         configure_theme(&cc.egui_ctx, &Tokens::dark());
+        let (jobs, job_events) = Jobs::new();
         Self {
             discovery,
             runtime,
             events,
+            jobs,
+            job_events,
+            job: None,
+            paths,
+            catalog,
             log: VecDeque::new(),
             search: String::new(),
             view: View::Grid,
@@ -110,6 +135,151 @@ impl LauncherApp {
         }
     }
 
+    /// Drain background job events into the log + [`JobStatus`], and re-run
+    /// discovery once an install/uninstall lands so the cards update.
+    fn step_jobs(&mut self) {
+        let mut rediscover = false;
+        while let Ok(event) = self.job_events.try_recv() {
+            match event {
+                JobEvent::Started { id, label } => {
+                    self.log_line(format!("{label}…"));
+                    self.job = Some(JobStatus {
+                        id,
+                        label,
+                        stage: None,
+                        done: 0,
+                        total: None,
+                    });
+                }
+                JobEvent::Stage { id, stage } => {
+                    if let Some(job) = &mut self.job
+                        && job.id == id
+                    {
+                        job.stage = Some(stage);
+                    }
+                }
+                JobEvent::Progress { id, done, total } => {
+                    if let Some(job) = &mut self.job
+                        && job.id == id
+                    {
+                        job.done = done;
+                        job.total = total;
+                    }
+                }
+                JobEvent::Finished { summary, .. } => {
+                    self.log_line(summary);
+                    self.job = None;
+                    rediscover = true;
+                }
+                JobEvent::Failed { id, message } => {
+                    self.log_line(format!("{id} failed: {message}"));
+                    self.job = None;
+                }
+                JobEvent::Cancelled { id } => {
+                    self.log_line(format!("{id} cancelled"));
+                    self.job = None;
+                }
+            }
+        }
+        if rediscover {
+            self.discovery = crate::discovery::discover(&self.paths, &self.catalog);
+        }
+    }
+
+    /// A one-line summary of the running job for the footer.
+    fn job_line(&self) -> Option<String> {
+        let job = self.job.as_ref()?;
+        let stage = job.stage.map(Stage::label).unwrap_or("Working");
+        match job.total {
+            Some(total) if total > 0 => Some(format!(
+                "{} · {} {}%",
+                job.label,
+                stage,
+                job.done.saturating_mul(100) / total
+            )),
+            _ => Some(format!("{} · {}", job.label, stage)),
+        }
+    }
+
+    /// Download (if needed) and install a catalogue app on a worker thread.
+    fn start_install(&mut self, id: &str) {
+        let Some(entry) = self
+            .catalog
+            .apps
+            .iter()
+            .find(|entry| entry.id == id)
+            .cloned()
+        else {
+            self.log_line(format!("{id}: not in the catalogue"));
+            return;
+        };
+        let url = entry.url.clone().unwrap_or_else(|| {
+            format!(
+                "https://github.com/{}/releases/latest/download/{}",
+                entry.repo, entry.release_asset
+            )
+        });
+        let data_dir = crate::paths::nucleus_data_dir();
+        let dest = data_dir.join("cache").join(&entry.release_asset);
+        let apps_root = data_dir.join("apps");
+        let sha = entry.sha256.clone();
+        let label = format!(
+            "Install {}",
+            entry.name.clone().unwrap_or_else(|| entry.id.clone())
+        );
+        let started = self.jobs.submit(id.to_string(), label, move |ctx| {
+            ctx.stage(Stage::Downloading);
+            let cancel = ctx.cancel_flag();
+            let mut progress = |done: u64, total: Option<u64>| ctx.progress(done, total);
+            crate::net::download_archive(&url, &dest, &mut progress, &cancel)
+                .map_err(|err| err.to_string())?;
+            if ctx.is_cancelled() {
+                return Err("cancelled".into());
+            }
+            // Verify the catalogue digest against the bytes we actually got,
+            // before anything is unpacked into the app store.
+            ctx.stage(Stage::Verifying);
+            if let Some(expected) = sha.as_deref() {
+                let mut file = std::fs::File::open(&dest)
+                    .map_err(|err| format!("cache file for {}: {err}", entry.release_asset))?;
+                let actual = crate::verify::sha256_reader(&mut file)
+                    .map_err(|err| format!("reading cache file: {err}"))?;
+                if !actual.eq_ignore_ascii_case(expected) {
+                    return Err(format!(
+                        "{}: digest mismatch (expected {expected}, got {actual})",
+                        entry.release_asset
+                    ));
+                }
+            }
+            if ctx.is_cancelled() {
+                return Err("cancelled".into());
+            }
+            ctx.stage(Stage::Installing);
+            crate::install::install_archive(&dest, &apps_root, sha.as_deref())
+                .map(|outcome| format!("installed {} {}", outcome.id, outcome.version))
+                .map_err(|err| err.to_string())
+        });
+        if !started {
+            self.log_line("a job is already running");
+        }
+    }
+
+    /// Remove a catalogue-installed app on a worker thread.
+    fn start_uninstall(&mut self, id: &str) {
+        let apps_root = crate::paths::nucleus_data_dir().join("apps");
+        let id_owned = id.to_string();
+        let label = format!("Remove {id}");
+        let started = self.jobs.submit(id.to_string(), label, move |ctx| {
+            ctx.stage(Stage::Removing);
+            crate::install::uninstall_app(&id_owned, &apps_root)
+                .map(|()| format!("removed {id_owned}"))
+                .map_err(|err| err.to_string())
+        });
+        if !started {
+            self.log_line("a job is already running");
+        }
+    }
+
     /// Apply a queued action after the frame's panels are drawn.
     fn apply_action(&mut self, id: String, action: Action) {
         match action {
@@ -128,6 +298,8 @@ impl LauncherApp {
                     crate::process::reveal(&app.dir);
                 }
             }
+            Action::Install | Action::Update => self.start_install(&id),
+            Action::Uninstall => self.start_uninstall(&id),
         }
     }
 }
@@ -135,11 +307,16 @@ impl LauncherApp {
 impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.step_events();
+        self.step_jobs();
         self.runtime.reconcile();
 
         if self.runtime.running_count() > 0 {
             // Keep polling for exited windows/processes while anything runs.
             ctx.request_repaint_after(Duration::from_millis(250));
+        }
+        if self.job.is_some() {
+            // Keep the progress line live while a background job runs.
+            ctx.request_repaint_after(Duration::from_millis(100));
         }
 
         let t = if self.dark {
@@ -150,6 +327,8 @@ impl eframe::App for LauncherApp {
         configure_theme(ctx, &t);
 
         let counts = self.counts();
+        let job_line = self.job_line();
+        let busy = self.jobs.is_busy();
         let mut actions: Vec<(String, Action)> = Vec::new();
         let border = Stroke::new(1.0_f32, t.line);
 
@@ -185,7 +364,10 @@ impl eframe::App for LauncherApp {
                         .stroke(border),
                 )
                 .show(ctx, |ui| {
-                    let log: Vec<String> = self.log.iter().cloned().collect();
+                    let mut log: Vec<String> = self.log.iter().cloned().collect();
+                    if let Some(line) = &job_line {
+                        log.push(line.clone());
+                    }
                     crate::ui::views::footer(ui, &t, counts, &self.facts, &self.runtime, &log);
                 });
 
@@ -239,6 +421,7 @@ impl eframe::App for LauncherApp {
                         &mut state,
                         &mut actions,
                         icons,
+                        busy,
                     );
                 });
         }
@@ -259,6 +442,7 @@ impl eframe::App for LauncherApp {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.jobs.cancel();
         self.runtime.stop_all();
     }
 }

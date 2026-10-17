@@ -4,7 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use nucleus_launcher_core::{
-    AppMeta, AppSource, Card, InstalledRecord, RoadmapEntry, merge_roadmap, parse_manifest,
+    AppMeta, AppSource, Card, Catalog, CatalogEntry, Channel, InstalledRecord, Manifest,
+    RoadmapEntry, merge_roadmap, parse_manifest,
 };
 
 use crate::paths::Paths;
@@ -47,8 +48,10 @@ impl Discovery {
 /// Discover the whole suite: for each app root (in order) take the root itself
 /// plus its immediate child directories, and for every candidate load
 /// `<dir>/nucleus.app.json` **and** `<dir>/current/nucleus.app.json`
-/// (first one wins per id). Then load and merge the roadmap.
-pub fn discover(paths: &Paths) -> Discovery {
+/// (first one wins per id). Then attach catalogue entries, surface apps that
+/// are in the catalogue but not yet on disk (so they can be installed), and
+/// merge the roadmap.
+pub fn discover(paths: &Paths, catalog: &Catalog) -> Discovery {
     let mut apps: Vec<AppMeta> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
 
@@ -79,6 +82,22 @@ pub fn discover(paths: &Paths) -> Discovery {
         }
     }
 
+    // M2: attach catalogue entries to installed apps (drives `UpdateAvailable`)
+    // and add a card for every catalogue app that is not on disk yet, so it can
+    // be installed from the UI on a machine without the repository.
+    for app in &mut apps {
+        if let Some(entry) = catalog.apps.iter().find(|entry| entry.id == app.id()) {
+            app.catalog = Some(entry.clone());
+        }
+    }
+    let user_apps_root = &paths.app_roots[1];
+    for entry in &catalog.apps {
+        if apps.iter().any(|app| app.id() == entry.id) {
+            continue;
+        }
+        apps.push(catalogue_meta(entry, user_apps_root.join(&entry.id)));
+    }
+
     let roadmap = load_roadmap(&paths.repo_root).unwrap_or_else(|err| {
         errors.push(err);
         Vec::new()
@@ -90,6 +109,51 @@ pub fn discover(paths: &Paths) -> Discovery {
         cards,
         roadmap,
         errors,
+    }
+}
+
+/// A placeholder [`AppMeta`] for an app that is in the catalogue but not yet on
+/// disk: enough to render a card with an enabled "Install" button. The real
+/// manifest replaces it once the archive is installed and rediscovered.
+fn catalogue_meta(entry: &CatalogEntry, dir: PathBuf) -> AppMeta {
+    let manifest = Manifest {
+        id: entry.id.clone(),
+        name: entry.name.clone().unwrap_or_else(|| entry.id.clone()),
+        version: entry.version.clone().unwrap_or_default(),
+        core_api_version: "1".to_string(),
+        description: None,
+        author: None,
+        category: None,
+        status: None,
+        inspired_by: None,
+        icon: None,
+        entry: None,
+        protocol_entry: None,
+        mcp_entry: None,
+        launch: None,
+        protocol_range: None,
+        permissions: Vec::new(),
+        capabilities: Vec::new(),
+        min_shell: None,
+        update_channel: entry.channel.as_deref().and_then(channel_from_str),
+        integrity: None,
+        signature: None,
+    };
+    AppMeta {
+        manifest,
+        manifest_path: dir.join("nucleus.app.json"),
+        dir,
+        source: AppSource::UserData,
+        installed: None,
+        catalog: Some(entry.clone()),
+    }
+}
+
+fn channel_from_str(value: &str) -> Option<Channel> {
+    match value {
+        "stable" => Some(Channel::Stable),
+        "beta" => Some(Channel::Beta),
+        _ => None,
     }
 }
 
@@ -200,6 +264,36 @@ mod tests {
         );
         assert_eq!(discovery.app_count(), 1);
         assert_eq!(discovery.planned_count(), 0);
+    }
+
+    #[test]
+    fn catalogue_only_app_becomes_an_installable_card() {
+        let entry = CatalogEntry {
+            id: "nucleus.notes".into(),
+            repo: "Skeabby/nucleus".into(),
+            release_asset: "nucleus.notes.nucleusapp".into(),
+            sha256: Some("0".repeat(64)),
+            version: Some("1.2.0".into()),
+            url: None,
+            name: Some("Notes".into()),
+            channel: Some("stable".into()),
+        };
+        let meta = catalogue_meta(&entry, PathBuf::from("C:/Nucleus/apps/nucleus.notes"));
+        assert_eq!(meta.id(), "nucleus.notes");
+        assert_eq!(meta.name(), "Notes");
+        assert_eq!(meta.source, AppSource::UserData);
+        assert!(meta.installed.is_none(), "not installed yet");
+        assert!(meta.catalog.is_some(), "catalogue entry attached");
+        assert_eq!(meta.manifest.update_channel, Some(Channel::Stable));
+        // Status must be NotInstalled so the card offers "Install".
+        assert_eq!(
+            nucleus_launcher_core::derive_status(
+                meta.installed.as_ref(),
+                meta.catalog.as_ref(),
+                false
+            ),
+            nucleus_launcher_core::AppStatus::NotInstalled
+        );
     }
 
     #[test]

@@ -232,6 +232,45 @@ pub fn install_archive(
     })
 }
 
+/// Anything that can go wrong uninstalling a catalogue app.
+#[derive(Debug, Error)]
+pub enum UninstallError {
+    #[error("`{0}` is not installed")]
+    NotInstalled(String),
+
+    #[error("refusing to uninstall `{0}`: `{1}` is not a Nucleus app directory")]
+    NotAnApp(String, String),
+
+    #[error("invalid app id `{0}`")]
+    InvalidId(String),
+
+    #[error("i/o error: {0}")]
+    Io(#[from] io::Error),
+}
+
+/// Remove a catalogue-installed app (`<apps_root>/<id>`). Only directories that
+/// actually look like a Nucleus install are removed, so a stray folder or a
+/// repository app (which lives elsewhere) is never deleted.
+pub fn uninstall_app(id: &str, apps_root: &Path) -> Result<(), UninstallError> {
+    if id.is_empty() || id.contains(['/', '\\']) || id.contains("..") {
+        return Err(UninstallError::InvalidId(id.to_string()));
+    }
+    let dir = apps_root.join(id);
+    if !dir.is_dir() {
+        return Err(UninstallError::NotInstalled(id.to_string()));
+    }
+    let looks_like_an_app =
+        dir.join(MANIFEST_FILE).is_file() || dir.join("current").join(MANIFEST_FILE).is_file();
+    if !looks_like_an_app {
+        return Err(UninstallError::NotAnApp(
+            id.to_string(),
+            dir.display().to_string(),
+        ));
+    }
+    fs::remove_dir_all(&dir)?;
+    Ok(())
+}
+
 fn read_entry(archive: &mut ZipArchive<File>, name: &str) -> Result<String, InstallError> {
     let mut entry = match archive.by_name(name) {
         Ok(entry) => entry,
@@ -470,7 +509,8 @@ mod tests {
             shell_exe: None,
             icon_ico: None,
         };
-        let discovery = crate::discovery::discover(&paths);
+        let discovery =
+            crate::discovery::discover(&paths, &nucleus_launcher_core::Catalog::default());
         let app = discovery.app("nucleus.notes").expect("installed app seen");
         assert_eq!(app.source, nucleus_launcher_core::AppSource::UserData);
         assert_eq!(app.name(), "Notes");
@@ -637,6 +677,52 @@ mod tests {
             "got {err:?}"
         );
         assert!(!apps.join("nucleus.notes").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn uninstalls_an_installed_app() {
+        let root = scratch("uninstall");
+        let archive = pack_archive(&root, "notes.nucleusapp", &sample_files());
+        let apps = root.join("apps");
+        install_archive(&archive, &apps, None).unwrap();
+        assert!(apps.join("nucleus.notes").is_dir());
+
+        uninstall_app("nucleus.notes", &apps).unwrap();
+        assert!(!apps.join("nucleus.notes").exists());
+        // A second call reports it is already gone.
+        assert!(matches!(
+            uninstall_app("nucleus.notes", &apps),
+            Err(UninstallError::NotInstalled(_))
+        ));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn refuses_to_uninstall_a_non_app_directory() {
+        let root = scratch("uninstall-guard");
+        let apps = root.join("apps");
+        fs::create_dir_all(apps.join("nucleus.notes")).unwrap();
+        fs::write(apps.join("nucleus.notes/random.txt"), b"hi").unwrap();
+        let err = uninstall_app("nucleus.notes", &apps).unwrap_err();
+        assert!(matches!(err, UninstallError::NotAnApp(_, _)), "got {err:?}");
+        assert!(apps.join("nucleus.notes").exists(), "left untouched");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn rejects_an_id_with_a_separator() {
+        let root = scratch("uninstall-id");
+        let apps = root.join("apps");
+        fs::create_dir_all(&apps).unwrap();
+        assert!(matches!(
+            uninstall_app("..\\evil", &apps),
+            Err(UninstallError::InvalidId(_))
+        ));
+        assert!(matches!(
+            uninstall_app("a/b", &apps),
+            Err(UninstallError::InvalidId(_))
+        ));
         let _ = fs::remove_dir_all(&root);
     }
 
