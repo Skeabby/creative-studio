@@ -91,7 +91,8 @@ npm install
 npm run build
 ```
 
-Run the launcher **from the repo root** — that is where it looks for `apps\`:
+Run the launcher **from the repo root** — that is where it looks for `apps\` (a checkout is optional
+when you only want the published catalogue):
 
 ```powershell
 .\launcher-rs\target\release\nucleus-launcher.exe
@@ -187,7 +188,7 @@ npm run demo:cross-app    # replay the two-app session and its unified undo
 The native launcher is a cargo workspace (`launcher-rs/`). From that directory:
 
 ```bash
-cargo test                                           # 105 unit tests (core + launcher)
+cargo test                                           # 107 unit tests (core + launcher)
 cargo clippy --all-targets -- -D warnings            # lints are part of the contract
 cargo run --release -p nucleus-launcher -- --smoke   # headless smoke test (apps + planned + node)
 cargo run --release -p nucleus-launcher -- --list     # discovered vs planned apps
