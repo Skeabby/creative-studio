@@ -48,6 +48,10 @@ function Get-WorkspaceVersion {
 # Finds ISCC.exe in the usual Inno Setup 6 locations, then on PATH.
 function Find-Iscc {
     $candidates = @()
+    # A per-user install (the no-admin path: setup.exe /CURRENTUSER) lands here.
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $candidates += (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
+    }
     if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
         $candidates += (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
     }

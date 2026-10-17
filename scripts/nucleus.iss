@@ -99,8 +99,9 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  { Never block the install on Node.js - only warn, because only the apps need it. }
-  if (CurStep = ssPostInstall) and (not NodeIsAvailable()) then
+  { Never block the install on Node.js - only warn, because only the apps need it.
+    Stay silent during an unattended install, or a modal box would hang it. }
+  if (CurStep = ssPostInstall) and (not WizardSilent()) and (not NodeIsAvailable()) then
     MsgBox('Nucleus is installed.' + #13#10 + #13#10 +
            'Node.js is required to run the apps (the launcher itself does not need it). ' +
            'Install it from https://nodejs.org and make sure it is on your PATH, then open Nucleus.',
