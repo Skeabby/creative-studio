@@ -228,9 +228,10 @@ The phased plan, design decisions and risks live in [`ARCHITECTURE.md`](./ARCHIT
 Where we are: the native Rust launcher + first three apps (**done**), cross-app federation, and the
 full `.nucleusapp` catalogue loop — bundle builder, catalogue generator, verified install / update /
 remove in both the CLI and the UI, with an offline (no-network) test — **shipped as `v0.4.0-alpha`**.
-Next: publish the first app bundles so the committed `catalog.json` lists real, downloadable apps,
-then build the **Image Editor** (the second proof app), the JSON-RPC frontend and packaging for
-cross-platform native bundles.
+The committed catalogue already points at two published app bundles
+([`apps-v0.1.0`](https://github.com/Skeabby/nucleus/releases/tag/apps-v0.1.0)), so a released
+launcher installs them on a machine with no checkout. Next: build the **Image Editor** (the second
+proof app), the JSON-RPC frontend and packaging for cross-platform native bundles.
 
 ## Contributing
 

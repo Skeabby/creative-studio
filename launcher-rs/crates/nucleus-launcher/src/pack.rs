@@ -247,15 +247,38 @@ pub fn gen_catalog(
     Ok(apps.len())
 }
 
-/// A minimal UTC timestamp without pulling in a date crate:
-/// seconds since the Unix epoch is enough to order catalogues.
+/// A UTC timestamp in ISO-8601, without pulling in a date crate.
 fn now_iso8601() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("unix:{secs}")
+        .unwrap_or(0) as i64;
+    let days = secs.div_euclid(86_400);
+    let rest = secs.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let (hour, minute, second) = (rest / 3_600, (rest % 3_600) / 60, rest % 60);
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
+}
+
+/// Days since 1970-01-01 to a civil `(year, month, day)`, using Howard
+/// Hinnant's `civil_from_days` algorithm (the inverse of `days_from_civil`).
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let shifted = days + 719_468;
+    let era = if shifted >= 0 {
+        shifted
+    } else {
+        shifted - 146_096
+    } / 146_097;
+    let day_of_era = (shifted - era * 146_097) as u64; // [0, 146096]
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era as i64 + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let mp = (5 * day_of_year + 2) / 153; // [0, 11]
+    let day = (day_of_year - (153 * mp + 2) / 5 + 1) as u32; // [1, 31]
+    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32; // [1, 12]
+    (if month <= 2 { year + 1 } else { year }, month, day)
 }
 
 #[cfg(test)]
@@ -322,6 +345,15 @@ mod tests {
 
     fn outcome_hash(path: &Path) -> Option<String> {
         sha256_reader(&mut File::open(path).unwrap()).ok()
+    }
+
+    #[test]
+    fn civil_dates_round_trip_against_known_days() {
+        assert_eq!(civil_from_days(0), (1970, 1, 1));
+        assert_eq!(civil_from_days(19_723), (2024, 1, 1)); // 2024-01-01 is 19723 days in
+        assert_eq!(civil_from_days(-1), (1969, 12, 31));
+        assert!(now_iso8601().ends_with('Z'));
+        assert_eq!(now_iso8601().len(), 20);
     }
 
     #[test]

@@ -503,7 +503,8 @@ mod tests {
         let empty = root.join("empty-apps");
         fs::create_dir_all(&empty).unwrap();
         let paths = crate::paths::Paths {
-            repo_root: root.clone(),
+            repo_root: Some(root.clone()),
+            user_apps: apps.clone(),
             app_roots: vec![empty, apps],
             window_profiles_dir: root.join("profiles"),
             shell_exe: None,

@@ -7,9 +7,13 @@ use std::path::{Path, PathBuf};
 /// Everything about disk layout the launcher needs at startup.
 #[derive(Debug, Clone)]
 pub struct Paths {
-    /// `<repo>` — contains `apps/` and `assets/`.
-    pub repo_root: PathBuf,
-    /// `[<repo>/apps, %APPDATA%\Nucleus/apps]`, first root wins on id.
+    /// `<repo>` when a checkout was found; `None` on a machine that only has
+    /// the released launcher, where the catalogue is the sole source of apps.
+    pub repo_root: Option<PathBuf>,
+    /// `%APPDATA%\Nucleus\apps` — where catalogue installs land.
+    pub user_apps: PathBuf,
+    /// App roots in precedence order: `<repo>/apps` first when it exists, then
+    /// [`Paths::user_apps`]. First root wins on id.
     pub app_roots: Vec<PathBuf>,
     /// `%APPDATA%\Nucleus\window-profiles\<app id>`.
     pub window_profiles_dir: PathBuf,
@@ -21,32 +25,51 @@ pub struct Paths {
 
 impl Paths {
     /// Resolve paths. `cli_repo` overrides automatic discovery of `<repo>`.
+    ///
+    /// A missing repository is **not** an error: the launcher then runs
+    /// catalogue-only (installs land in the user data directory), which is how
+    /// a released binary works on a machine without the checkout. An explicit
+    /// `--repo` that does not look like the repository is still rejected.
     pub fn resolve(cli_repo: Option<&Path>) -> Result<Paths, String> {
         let repo_root = match cli_repo {
-            Some(path) => path.to_path_buf(),
-            None => find_repo_root().ok_or(
-                "could not locate the nucleus repository: I looked for an `apps/` \
-                 directory upward from the current directory and from the executable. \
-                 Run from inside the repository or pass --repo <path>.",
-            )?,
+            Some(path) => {
+                if !path.join("apps").is_dir() {
+                    return Err(format!(
+                        "`{}` does not look like the nucleus repository (no `apps/` directory)",
+                        path.display()
+                    ));
+                }
+                Some(path.to_path_buf())
+            }
+            None => find_repo_root(),
         };
-        if !repo_root.join("apps").is_dir() {
-            return Err(format!(
-                "`{}` does not look like the nucleus repository (no `apps/` directory)",
-                repo_root.display()
-            ));
-        }
+
         let data_dir = nucleus_data_dir();
-        let app_roots = vec![repo_root.join("apps"), data_dir.join("apps")];
-        let assets = repo_root.join("assets");
-        let exists = |p: &Path| p.is_file();
-        let shell_exe =
-            exists(&assets.join("nucleus-shell.exe")).then(|| assets.join("nucleus-shell.exe"));
-        let icon_ico = exists(&assets.join("nucleus.ico")).then(|| assets.join("nucleus.ico"));
+        let user_apps = data_dir.join("apps");
+        let mut app_roots = Vec::new();
+        if let Some(root) = &repo_root {
+            app_roots.push(root.join("apps"));
+        }
+        app_roots.push(user_apps.clone());
+
+        let (shell_exe, icon_ico) = match &repo_root {
+            Some(root) => {
+                let assets = root.join("assets");
+                let shell = assets.join("nucleus-shell.exe");
+                let icon = assets.join("nucleus.ico");
+                (
+                    shell.is_file().then_some(shell),
+                    icon.is_file().then_some(icon),
+                )
+            }
+            None => (None, None),
+        };
+
         Ok(Paths {
             repo_root,
-            window_profiles_dir: data_dir.join("window-profiles"),
+            user_apps,
             app_roots,
+            window_profiles_dir: data_dir.join("window-profiles"),
             shell_exe,
             icon_ico,
         })

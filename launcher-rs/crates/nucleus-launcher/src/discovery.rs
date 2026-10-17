@@ -55,10 +55,14 @@ pub fn discover(paths: &Paths, catalog: &Catalog) -> Discovery {
     let mut apps: Vec<AppMeta> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
 
-    for (root, source) in [
-        (paths.app_roots[0].as_path(), AppSource::Repo),
-        (paths.app_roots[1].as_path(), AppSource::UserData),
-    ] {
+    for root in &paths.app_roots {
+        // The user data root is the one catalogue installs land in; everything
+        // before it is the (optional) repository checkout.
+        let source = if root == &paths.user_apps {
+            AppSource::UserData
+        } else {
+            AppSource::Repo
+        };
         if !root.is_dir() {
             continue;
         }
@@ -90,7 +94,7 @@ pub fn discover(paths: &Paths, catalog: &Catalog) -> Discovery {
             app.catalog = Some(entry.clone());
         }
     }
-    let user_apps_root = &paths.app_roots[1];
+    let user_apps_root = &paths.user_apps;
     for entry in &catalog.apps {
         if apps.iter().any(|app| app.id() == entry.id) {
             continue;
@@ -98,10 +102,15 @@ pub fn discover(paths: &Paths, catalog: &Catalog) -> Discovery {
         apps.push(catalogue_meta(entry, user_apps_root.join(&entry.id)));
     }
 
-    let roadmap = load_roadmap(&paths.repo_root).unwrap_or_else(|err| {
-        errors.push(err);
-        Vec::new()
-    });
+    // The roadmap lives in the checkout; without one there is simply nothing
+    // planned to merge, which is not an error.
+    let roadmap = match &paths.repo_root {
+        Some(repo_root) => load_roadmap(repo_root).unwrap_or_else(|err| {
+            errors.push(err);
+            Vec::new()
+        }),
+        None => Vec::new(),
+    };
     let cards = merge_roadmap(&apps, &roadmap);
 
     Discovery {
@@ -294,6 +303,49 @@ mod tests {
             ),
             nucleus_launcher_core::AppStatus::NotInstalled
         );
+    }
+
+    /// A released binary on a machine with no checkout: no `repo_root`, no repo
+    /// app root, no roadmap — only the user data root and the catalogue. The
+    /// catalogue apps must still show up as installable, and the missing
+    /// roadmap must not be reported as an error.
+    #[test]
+    fn a_machine_without_a_repository_still_lists_catalogue_apps() {
+        let base = std::env::temp_dir().join(format!("nucleus-norepo-{}", std::process::id()));
+        let user_apps = base.join("apps");
+        std::fs::create_dir_all(&user_apps).unwrap();
+        let paths = Paths {
+            repo_root: None,
+            user_apps: user_apps.clone(),
+            app_roots: vec![user_apps.clone()],
+            window_profiles_dir: base.join("profiles"),
+            shell_exe: None,
+            icon_ico: None,
+        };
+        let catalog = nucleus_launcher_core::Catalog {
+            suite_version: "0.4.0-alpha".into(),
+            generated_at: None,
+            apps: vec![CatalogEntry {
+                id: "nucleus.notes".into(),
+                repo: "Skeabby/nucleus".into(),
+                release_asset: "nucleus.notes.nucleusapp".into(),
+                sha256: Some("0".repeat(64)),
+                version: Some("0.1.0".into()),
+                url: None,
+                name: Some("Notes".into()),
+                channel: Some("stable".into()),
+            }],
+        };
+
+        let discovery = discover(&paths, &catalog);
+        let card = discovery
+            .card("nucleus.notes")
+            .expect("catalogue app listed");
+        assert!(card.as_app().unwrap().installed.is_none(), "not installed");
+        assert!(discovery.errors.is_empty(), "{:?}", discovery.errors);
+        assert_eq!(discovery.planned_count(), 0, "no roadmap without a repo");
+
+        let _ = std::fs::remove_dir_all(&base);
     }
 
     #[test]
