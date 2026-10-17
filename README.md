@@ -80,11 +80,14 @@ different route:
 
 ## Quickstart (Windows)
 
-Nucleus installs like any other Windows app: download `NucleusSetup-<version>-win64.exe` from the
-[Releases page](https://github.com/Skeabby/nucleus/releases), double-click it, and you are done. No
-Node build, no checkout, no admin prompt — it is a per-user install. Prefer not to install? Grab the
-portable `Nucleus-<version>-win64-portable.zip` instead and run `nucleus-launcher.exe` from wherever
-you unzip it.
+Nucleus installs like any other Windows app: download `NucleusSetup-0.4.0-alpha-win64.exe` from the
+[v0.4.0-alpha release](https://github.com/Skeabby/nucleus/releases/tag/v0.4.0-alpha), double-click it,
+and you are done. No Node build, no checkout, no admin prompt — it is a per-user install. Prefer not
+to install? Grab the portable `nucleus-launcher-v0.4.0-alpha-win64.zip` from the same release and run
+`nucleus-launcher.exe` from wherever you unzip it.
+
+> The installer ships with the `v0.4.0-alpha` **pre-release**; the stable `v0.3.0` (the "Latest"
+> release) predates it and has no installer.
 
 1. **Run the installer** (`NucleusSetup-<version>-win64.exe`). It needs no administrator rights.
 2. **Launch Nucleus** from the Start Menu (or the desktop shortcut, if you ticked that box), pick an
