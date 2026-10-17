@@ -5,7 +5,7 @@
 ### The creative suite that runs itself.
 
 **One command bus. Every app speaks GUI, CLI and MCP.**
-**A native Rust launcher, drop-in plugins in WebView2 windows — no Electron, no install wizard.**
+**A native Rust launcher, drop-in plugins in WebView2 windows — no Electron, no bundled runtime.**
 
 [![CI](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/ci.yml)
 [![Launcher (Rust)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml/badge.svg)](https://github.com/Skeabby/nucleus/actions/workflows/launcher-rs.yml)
@@ -80,25 +80,44 @@ different route:
 
 ## Quickstart (Windows)
 
-The launcher is the native Rust binary; the apps it hosts are Node/TypeScript. Easiest path: grab
-`nucleus-launcher-v0.4.0-alpha-win64.zip` from the
-[v0.4.0-alpha release](https://github.com/Skeabby/nucleus/releases/tag/v0.4.0-alpha)
-(the stable `v0.3.0` remains the [Latest release](https://github.com/Skeabby/nucleus/releases/latest)),
-then build the apps once:
+Nucleus installs like any other Windows app: download `NucleusSetup-<version>-win64.exe` from the
+[Releases page](https://github.com/Skeabby/nucleus/releases), double-click it, and you are done. No
+Node build, no checkout, no admin prompt — it is a per-user install. Prefer not to install? Grab the
+portable `Nucleus-<version>-win64-portable.zip` instead and run `nucleus-launcher.exe` from wherever
+you unzip it.
+
+1. **Run the installer** (`NucleusSetup-<version>-win64.exe`). It needs no administrator rights.
+2. **Launch Nucleus** from the Start Menu (or the desktop shortcut, if you ticked that box), pick an
+   app and click **Open** — it starts on a free port in its own window.
+3. **To remove it**: **Settings → Apps → Nucleus → Uninstall**, or run
+   `powershell -ExecutionPolicy Bypass -File scripts\uninstall-nucleus.ps1`.
+
+> **Node.js note:** the *launcher* is a native binary and needs nothing else. The *apps* it hosts are
+> Node servers, so Node.js must be on your `PATH` for them to run — install it once from
+> [nodejs.org](https://nodejs.org). The installer only *warns* if it is missing; it never blocks.
+
+A released launcher runs **catalogue-only** with no checkout: it discovers installed apps under
+`%APPDATA%\Nucleus\apps` and installs published app bundles from the catalogue, so it works on a
+machine that has never seen this repository. Close the launcher window to shut the whole nucleus down.
+
+<details>
+<summary><strong>Run from a checkout (developers)</strong></summary>
+
+Contributors run everything from the repository instead. The launcher is the native Rust binary; the
+apps it hosts are Node/TypeScript, so build the apps once:
 
 ```powershell
 npm install
 npm run build
 ```
 
-Run the launcher **from the repo root** — that is where it looks for `apps\` (a checkout is optional
-when you only want the published catalogue):
+Run the launcher **from the repo root** — that is where it looks for `apps\`:
 
 ```powershell
 .\launcher-rs\target\release\nucleus-launcher.exe
 ```
 
-To build the launcher from source instead (needs a Rust toolchain):
+Build the launcher from source (needs a Rust toolchain):
 
 ```powershell
 cargo build --release --manifest-path launcher-rs\Cargo.toml
@@ -108,10 +127,14 @@ Published binaries are built with `scripts\build-release.ps1` instead: a plain r
 build machine's paths into the artifact through `file!()`/panic locations, and that script remaps them
 away (and refuses to hand you a binary that still contains them).
 
-Click **Open** on *PDF Workbench* — it starts on a free port in its own window. Close the
-launcher window to shut the whole nucleus down. Node.js must be on `PATH` for the apps themselves.
+Build the installer yourself (Inno Setup 6 is optional — without it the same command writes the
+portable ZIP):
 
-### Make it a real desktop app
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\make-setup.ps1
+```
+
+Make a checkout act like a desktop app:
 
 ```powershell
 npm run shell                       # (one-time) build the native window shell -> assets\nucleus-shell.exe
@@ -120,7 +143,8 @@ powershell -File scripts\install-shortcut.ps1   # "Nucleus.lnk" on the desktop, 
 
 The shortcut points straight at `launcher-rs\target\release\nucleus-launcher.exe`, with the repo
 root as its working directory; it falls back to the TypeScript entry if that binary is missing.
-Double-click **Nucleus** like any other Windows app.
+
+</details>
 
 ## How it works
 
