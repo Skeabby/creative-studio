@@ -78,7 +78,9 @@ different route:
 ## Quickstart (Windows)
 
 The launcher is the native Rust binary; the apps it hosts are Node/TypeScript. Easiest path: grab
-`nucleus-launcher-v0.4.0-alpha-win64.zip` from the [latest release](https://github.com/Skeabby/nucleus/releases/latest),
+`nucleus-launcher-v0.4.0-alpha-win64.zip` from the
+[v0.4.0-alpha release](https://github.com/Skeabby/nucleus/releases/tag/v0.4.0-alpha)
+(the stable `v0.3.0` remains the [Latest release](https://github.com/Skeabby/nucleus/releases/latest)),
 then build the apps once:
 
 ```powershell
