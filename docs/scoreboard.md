@@ -15,7 +15,7 @@ hand: that is the difference between a claim and a measurement.
 | Claim | Measured | Reproduce |
 |---|---|---|
 | Build, typecheck and test tasks pass | **33 / 33** | `npm run verify` |
-| TypeScript unit tests | **43** (control-federation 10 · core 10 · launcher 16 · pdf 7) | `npm run test` |
+| TypeScript unit tests | **57** (control-federation 10 · core 14 · launcher 16 · notes-app 10 · pdf 7) | `npm run test` |
 | Apps joined into one session → unified commands | **12 commands from 2 apps** (nucleus.pdf (pdf) · nucleus.notes (notes)) | `npm run demo:cross-app` |
 | One undo path across those apps: 4 edits in 2 apps, unwound then replayed | **9 / 9 checks passed** | `npm run demo:cross-app` |
 | Export from the edited state is a readable PDF | **3 pages read back** | `npm run demo:cross-app -- --export` |

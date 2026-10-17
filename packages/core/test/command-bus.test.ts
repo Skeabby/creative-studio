@@ -141,6 +141,28 @@ describe("@nucleus/core command bus", () => {
     }
   });
 
+  it("coalesces automatically when the command declares a strategy", () => {
+    const { doc, bus } = setup();
+    bus.register<{ id: string; n: number }, { id: string }>({
+      name: "test.touch",
+      title: "Touch",
+      description: "test command",
+      sideEffects: "write",
+      coalesce: { key: (params) => params.id },
+      run(params, ctx) {
+        const node = ctx.state.nodes[params.id];
+        const after = { ...node, props: { ...node.props, n: params.n } };
+        return { patches: [{ op: "update", nodeId: params.id, after }], result: { id: params.id } };
+      },
+    });
+    bus.invoke("doc.addNode", doc, { type: "layer", props: { fill: "red" } });
+    bus.invoke("test.touch", doc, { id: "n1", n: 1 });
+    bus.invoke("test.touch", doc, { id: "n1", n: 2 });
+    // One undo returns to before the burst, with no caller-supplied key.
+    expect(bus.undo(doc)).toBe(true);
+    expect(doc.nodes["n1"]?.props).toEqual({ fill: "red" });
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

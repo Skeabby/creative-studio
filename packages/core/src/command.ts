@@ -38,6 +38,15 @@ export interface CommandDescriptor<P = unknown, R = unknown> {
   description: string;
   sideEffects: SideEffects;
   reversible?: boolean;
+  /**
+   * Declares that bursts of this command should share one undo entry. The key
+   * is derived from the params (e.g. the edited node id) so consecutive edits to
+   * the same target coalesce without the caller doing anything.
+   */
+  coalesce?: {
+    key: (params: P, actor: Actor) => string | undefined;
+    windowMs?: number;
+  };
   run: (params: P, ctx: CommandContext) => CommandOutcome<R>;
 }
 
@@ -66,6 +75,9 @@ interface HistoryEntry {
   key?: string;
   at: number;
 }
+
+/** Default window for coalescing a burst of edits into one undo step. */
+const DEFAULT_COALESCE_WINDOW_MS = 800;
 
 /**
  * Merge a later inverse onto an earlier one for coalescing. The earliest patch
@@ -123,7 +135,14 @@ export class CommandBus {
 
     if (!options.dryRun && patches.length > 0) {
       const inverse = applyPatches(state, patches);
-      if (descriptor.reversible !== false) this.#pushHistory(inverse, options);
+      if (descriptor.reversible !== false) {
+        // A caller-supplied key wins; otherwise the command's own coalesce
+        // strategy decides (F2).
+        const key = options.coalesceKey ?? descriptor.coalesce?.key?.(params as never, actor);
+        const window =
+          options.coalesceWindowMs ?? descriptor.coalesce?.windowMs ?? DEFAULT_COALESCE_WINDOW_MS;
+        this.#pushHistory(inverse, key, window);
+      }
       // A fresh edit invalidates any redo branch.
       this.#redo.length = 0;
       state.docVersion += 1;
@@ -136,11 +155,9 @@ export class CommandBus {
    * Record an undo entry, coalescing into the previous one when the caller
    * supplied a `coalesceKey` that matches and we are still inside the window.
    */
-  #pushHistory(patches: Patch[], options: InvokeOptions): void {
+  #pushHistory(patches: Patch[], key: string | undefined, window: number): void {
     const now = Date.now();
-    const window = options.coalesceWindowMs ?? 800;
     const last = this.#history[this.#history.length - 1];
-    const key = options.coalesceKey;
     if (
       key !== undefined &&
       last !== undefined &&

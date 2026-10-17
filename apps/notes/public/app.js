@@ -65,11 +65,11 @@ async function apiFetch(path, options = {}) {
   return res.json();
 }
 
-async function op(name, params = {}, options = {}) {
+async function op(name, params = {}) {
   return apiFetch("/api/op", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name, params, ...options }),
+    body: JSON.stringify({ name, params }),
   });
 }
 
@@ -363,17 +363,13 @@ async function flushSave() {
   if (!activeId) return;
   clearTimeout(saveTimer);
   const rev = localRev;
-  // Coalesce a burst of autosaves into one undo step (F2); keyed per note so
-  // switching notes starts a fresh step.
-  const data = await op(
-    "note.update",
-    {
-      id: activeId,
-      title: titleInput.value,
-      content: editor.value,
-    },
-    { coalesceKey: `note.update:${activeId}` },
-  );
+  // The note.update command coalesces a burst into one undo step server-side
+  // (F2), so no client-side key is needed.
+  const data = await op("note.update", {
+    id: activeId,
+    title: titleInput.value,
+    content: editor.value,
+  });
   applyState(data);
   // Only claim these edits are saved if no keystroke landed mid-flight.
   sentRev = Math.max(sentRev, rev);

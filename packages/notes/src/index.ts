@@ -62,6 +62,8 @@ export function registerNoteCommands(bus: CommandBus): void {
     description: "Update title and/or content of a note.",
     sideEffects: "write",
     reversible: true,
+    // A typing/autosave burst on the same note collapses into one undo step (F2).
+    coalesce: { key: (params) => params.id, windowMs: 2000 },
     run(params, ctx) {
       const node = ctx.state.nodes[params.id];
       if (!node) throw new NucleusError("not_found", `note not found: ${params.id}`);
