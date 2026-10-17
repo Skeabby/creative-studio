@@ -1,9 +1,15 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { findFreePort } from "./ports.js";
 import { windowProfileDir } from "./paths.js";
 import { launchSpecDefaults } from "./manifest.js";
 import { openAppWindow, openDefaultBrowser, type AppWindow } from "./windows.js";
 import type { DiscoveredApp } from "./discovery.js";
+
+/** A per-launch secret for an app's HTTP surface (see SPEC security posture). */
+function randomToken(): string {
+  return randomBytes(16).toString("hex");
+}
 
 export interface RunningApp {
   id: string;
@@ -141,10 +147,11 @@ export class AppRuntime {
         url = spec.url ?? "";
       } else {
         const port = await findFreePort(spec.port ?? 0);
+        const token = randomToken();
         const command = spec.command ?? process.execPath;
         const child = spawn(command, spec.args ?? [], {
           cwd: app.dir,
-          env: { ...process.env, PORT: String(port) },
+          env: { ...process.env, PORT: String(port), NUCLEUS_TOKEN: token },
           stdio: "ignore",
           windowsHide: true,
           detached: true,
@@ -155,8 +162,10 @@ export class AppRuntime {
         running.port = port;
         child.once("exit", () => this.#forget(id, entry));
         // readyPath is the health probe; the window always opens the app root.
-        await this.#waitReady(port, readyPath);
-        url = `http://127.0.0.1:${port}/`;
+        await this.#waitReady(port, readyPath, token);
+        // The token rides in the URL for the first load; the app swaps it for an
+        // HttpOnly cookie and redirects to the clean URL.
+        url = `http://127.0.0.1:${port}/?t=${token}`;
       }
 
       running.url = url;
@@ -209,12 +218,13 @@ export class AppRuntime {
     await Promise.all([...this.#entries.keys()].map((id) => this.stop(id)));
   }
 
-  async #waitReady(port: number, path: string): Promise<void> {
+  async #waitReady(port: number, path: string, token?: string): Promise<void> {
     const deadline = Date.now() + this.#readyTimeoutMs;
     while (Date.now() < deadline) {
       try {
         const response = await fetch(`http://127.0.0.1:${port}${path}`, {
           signal: AbortSignal.timeout(1500),
+          headers: token ? { authorization: `Bearer ${token}` } : undefined,
         });
         if (response.ok) return;
       } catch {

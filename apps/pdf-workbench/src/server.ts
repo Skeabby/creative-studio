@@ -10,6 +10,9 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ControlServer } from "@nucleus/control";
 import { countPages, createPdfSession, exportPdf, pageViews } from "@nucleus/pdf";
+import { guard as guardRequest } from "./guard.js";
+
+const NUCLEUS_TOKEN = process.env.NUCLEUS_TOKEN ?? Math.random().toString(36).slice(2);
 
 const PORT = Number(process.env.PORT ?? 5173);
 const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
@@ -209,6 +212,15 @@ const server = createServer((req, res) => {
   void (async () => {
     try {
       const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+      if (url.searchParams.get("t") === NUCLEUS_TOKEN) {
+        res.writeHead(302, {
+          "set-cookie": `nt=${NUCLEUS_TOKEN}; HttpOnly; SameSite=Strict; Path=/`,
+          location: url.pathname,
+        });
+        res.end();
+        return;
+      }
+      if (!guardRequest(req, res, { port: PORT, token: NUCLEUS_TOKEN })) return;
       if (url.pathname.startsWith("/api/")) {
         const handled = await handleApi(req, res, url);
         if (!handled) sendJson(res, 404, { ok: false, error: { kind: "not_found", message: "unknown endpoint" } });
@@ -221,6 +233,6 @@ const server = createServer((req, res) => {
   })();
 });
 
-server.listen(PORT, () => {
-  process.stdout.write(`PDF Workbench running at http://localhost:${PORT}\n`);
+server.listen(PORT, "127.0.0.1", () => {
+  process.stdout.write(`PDF Workbench running at http://localhost:${PORT}/?t=${NUCLEUS_TOKEN}\n`);
 });

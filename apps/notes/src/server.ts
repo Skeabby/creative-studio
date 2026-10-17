@@ -15,6 +15,7 @@ import {
   NOTES_PROJECT_FORMAT,
   type NotesSession,
 } from "@nucleus/notes";
+import { guard as guardRequest } from "./guard.js";
 
 const PORT = Number(process.env.PORT ?? 5174);
 const PUBLIC_DIR = fileURLToPath(new URL("../public", import.meta.url));
@@ -53,6 +54,8 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
+const NUCLEUS_TOKEN = process.env.NUCLEUS_TOKEN ?? Math.random().toString(36).slice(2);
+
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
@@ -191,6 +194,17 @@ const server = createServer((req, res) => {
   void (async () => {
     try {
       const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+      // The launcher opens `/?t=<token>`; adopt it into an HttpOnly cookie and
+      // redirect to the clean URL so the token never lingers in history.
+      if (url.searchParams.get("t") === NUCLEUS_TOKEN) {
+        res.writeHead(302, {
+          "set-cookie": `nt=${NUCLEUS_TOKEN}; HttpOnly; SameSite=Strict; Path=/`,
+          location: url.pathname,
+        });
+        res.end();
+        return;
+      }
+      if (!guardRequest(req, res, { port: PORT, token: NUCLEUS_TOKEN })) return;
       if (url.pathname.startsWith("/api/")) {
         const handled = await handleApi(req, res, url);
         if (!handled) {
@@ -208,6 +222,6 @@ const server = createServer((req, res) => {
   })();
 });
 
-server.listen(PORT, () => {
-  process.stdout.write(`Notes running at http://localhost:${PORT}\n`);
+server.listen(PORT, "127.0.0.1", () => {
+  process.stdout.write(`Notes running at http://localhost:${PORT}/?t=${NUCLEUS_TOKEN}\n`);
 });

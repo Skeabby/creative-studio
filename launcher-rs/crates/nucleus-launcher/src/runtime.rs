@@ -10,7 +10,7 @@ use nucleus_launcher_core::{AppMeta, LaunchKind};
 
 use crate::ports::free_port;
 use crate::probe::READY_TIMEOUT;
-use crate::process::{kill_tree, spawn_command, spawn_node};
+use crate::process::{kill_tree, random_token, spawn_command, spawn_node};
 use crate::window::open_app_window;
 
 /// What the engine tells the UI, drained once per frame.
@@ -155,15 +155,19 @@ impl Runtime {
                     .command
                     .clone()
                     .unwrap_or_else(|| node_or_literal(&config));
-                let child = spawn_node(&command, &spec.args, &app.dir, port).map_err(|err| {
-                    notify(Event::Failed(
-                        id.clone(),
-                        format!("cannot spawn node: {err}"),
-                    ));
-                    format!("failed to spawn node for `{id}`: {err}")
-                })?;
+                let token = random_token();
+                let child =
+                    spawn_node(&command, &spec.args, &app.dir, port, &token).map_err(|err| {
+                        notify(Event::Failed(
+                            id.clone(),
+                            format!("cannot spawn node: {err}"),
+                        ));
+                        format!("failed to spawn node for `{id}`: {err}")
+                    })?;
                 let pid = child.id();
-                let url = format!("http://127.0.0.1:{port}/");
+                // The token rides in the URL only for the first load; the app
+                // swaps it for an HttpOnly cookie and redirects to the clean URL.
+                let url = format!("http://127.0.0.1:{port}/?t={token}");
                 let want_window = spec.window.unwrap_or(true);
                 let ready_path = spec.ready_path.clone().unwrap_or_else(|| "/".to_string());
 
@@ -181,7 +185,12 @@ impl Runtime {
                 // window opens only once the server answers.
                 let runtime = self.clone();
                 std::thread::spawn(move || {
-                    match crate::probe::wait_ready_with_timeout(port, &ready_path, READY_TIMEOUT) {
+                    match crate::probe::wait_ready_with_timeout(
+                        port,
+                        &ready_path,
+                        READY_TIMEOUT,
+                        &token,
+                    ) {
                         Ok(()) => {
                             let id_ready = runtime.ready_window(
                                 &id,

@@ -45,15 +45,39 @@ pub fn known_node() -> Option<String> {
     }
 }
 
-/// Spawn an app's node server with `PORT` set. Node runs hidden; killing the
-/// returned process tree (taskkill `/T`) cleans up everything it spawned.
-pub fn spawn_node(node_path: &str, args: &[String], cwd: &Path, port: u16) -> io::Result<Child> {
+/// A per-launch secret for an app's HTTP surface.
+///
+/// The app servers require it on `/api/*` so a random web page cannot drive the
+/// command bus (see SPEC security posture). Built from `RandomState`, which the
+/// standard library seeds from OS entropy; no new dependency.
+pub fn random_token() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u64(0x9e37_79b9_7f4a_7c15);
+    let a = hasher.finish();
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u64(a);
+    let b = hasher.finish();
+    format!("{a:016x}{b:016x}")
+}
+
+/// Spawn an app's node server with `PORT` and `NUCLEUS_TOKEN` set. Node runs
+/// hidden; killing the returned process tree (taskkill `/T`) cleans up
+/// everything it spawned.
+pub fn spawn_node(
+    node_path: &str,
+    args: &[String],
+    cwd: &Path,
+    port: u16,
+    token: &str,
+) -> io::Result<Child> {
     #[cfg(windows)]
     {
         Command::new(node_path)
             .args(args)
             .current_dir(cwd)
             .env("PORT", port.to_string())
+            .env("NUCLEUS_TOKEN", token)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -62,7 +86,7 @@ pub fn spawn_node(node_path: &str, args: &[String], cwd: &Path, port: u16) -> io
     }
     #[cfg(not(windows))]
     {
-        let _ = (node_path, args, cwd, port);
+        let _ = (node_path, args, cwd, port, token);
         Err(io::Error::new(
             io::ErrorKind::Unsupported,
             "nucleus-launcher is Windows-first (M1)",
@@ -143,7 +167,8 @@ mod tests {
         let node = node.unwrap();
         let dir = std::env::temp_dir();
         let args = vec!["-e".to_string(), "setInterval(()=>{},1000)".to_string()];
-        let mut child = spawn_node(&node, &args, &dir, 43001).expect("node must spawn");
+        let mut child =
+            spawn_node(&node, &args, &dir, 43001, "test-token").expect("node must spawn");
         let pid = child.id();
         assert!(pid > 0);
         kill_tree(pid);

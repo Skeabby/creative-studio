@@ -113,9 +113,9 @@ export function noteViews(state: DocumentState): NoteView[] {
   return listNodes(state)
     .filter((n) => n.type === NOTE_TYPE)
     .sort((a, b) => {
-      const at = String(b.props["updatedAt"] ?? "");
-      const bt = String(a.props["updatedAt"] ?? "");
-      return bt.localeCompare(at);
+      const aUpdated = String(a.props["updatedAt"] ?? "");
+      const bUpdated = String(b.props["updatedAt"] ?? "");
+      return bUpdated.localeCompare(aUpdated); // newest first
     })
     .map((n) => ({
       id: n.id,

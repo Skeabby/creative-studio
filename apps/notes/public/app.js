@@ -15,8 +15,16 @@ let state = {
   canRedo: false,
 };
 
-/** The note id currently open in the editor. */
-let activeId = null;
+  /** The note id currently open in the editor. */
+  let activeId = null;
+
+  /**
+   * Edit generations (F4). `localRev` bumps on every keystroke; `sentRev` tracks
+   * the last generation successfully saved. They only differ while a save is in
+   * flight, which is exactly when we must not overwrite the textarea.
+   */
+  let localRev = 0;
+  let sentRev = 0;
 
 /** Whether we're showing the markdown preview. */
 let previewMode = false;
@@ -172,7 +180,17 @@ function isBlock(line) {
   );
 }
 
-function inlineMarkdown(s) {
+const esc = (s) =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+function inlineMarkdown(raw) {
+  // Escape BEFORE any markup is introduced, so user/agent text can never inject
+  // HTML. Only http(s)/mailto links survive; anything else is left as text.
+  let s = esc(raw);
   // code
   s = s.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
   // bold
@@ -181,8 +199,11 @@ function inlineMarkdown(s) {
   // italic
   s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
   s = s.replace(/_(.+?)_/g, "<em>$1</em>");
-  // link
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  // link (validate the scheme; &amp; must be decoded before testing)
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (match, text, href) =>
+    /^(https?:|mailto:)/i.test(href.replace(/&amp;/g, "&"))
+      ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`
+      : match);
   return s;
 }
 
@@ -232,7 +253,7 @@ function renderNoteList() {
   });
 }
 
-function renderEditor() {
+function renderEditor(opts = {}) {
   const note = state.notes.find(n => n.id === activeId);
 
   if (!note) {
@@ -251,9 +272,11 @@ function renderEditor() {
   deleteBtn.hidden = false;
   emptyState.hidden = true;
 
-  // Only update if content changed externally (avoid caret jump during typing)
-  if (titleInput.value !== note.title) titleInput.value = note.title;
-  if (editor.value !== note.content)   editor.value = note.content;
+  // Never clobber unsent typing: only take server text when every local edit
+  // has been saved (F4). Otherwise a save round-trip can drop keystrokes.
+  const clean = localRev === sentRev;
+  if (clean && titleInput.value !== note.title) titleInput.value = note.title;
+  if (clean && editor.value !== note.content) editor.value = note.content;
 
   if (previewMode) {
     editor.hidden = true;
@@ -262,7 +285,8 @@ function renderEditor() {
   } else {
     editor.hidden = false;
     preview.hidden = true;
-    editor.focus();
+    // Focus only when the user switched notes, not on every render.
+    if (opts.switched) editor.focus();
   }
 
   const words = (note.content ?? "").trim().split(/\s+/).filter(Boolean).length;
@@ -275,9 +299,9 @@ function renderToolbar() {
   noteCountEl.textContent = `${state.notes.length} note${state.notes.length !== 1 ? "s" : ""}`;
 }
 
-function render() {
+function render(opts = {}) {
   renderNoteList();
-  renderEditor();
+  renderEditor(opts);
   renderToolbar();
 }
 
@@ -308,10 +332,16 @@ function applyState(data) {
 }
 
 async function openNote(id) {
+  // Pending edits belong to the note we're leaving; flush them first so they
+  // aren't silently dropped when the editor is repointed.
+  clearTimeout(saveTimer);
+  if (activeId && activeId !== id) await flushSave().catch(() => {});
   activeId = id;
   previewMode = false;
   toggleBtn.textContent = "Preview";
-  render();
+  localRev = 0;
+  sentRev = 0;
+  render({ switched: true });
 }
 
 async function createNote() {
@@ -324,18 +354,23 @@ async function createNote() {
 }
 
 function scheduleSave() {
+  localRev += 1;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushSave, 600);
 }
 
 async function flushSave() {
   if (!activeId) return;
+  clearTimeout(saveTimer);
+  const rev = localRev;
   const data = await op("note.update", {
     id: activeId,
     title: titleInput.value,
     content: editor.value,
   });
   applyState(data);
+  // Only claim these edits are saved if no keystroke landed mid-flight.
+  sentRev = Math.max(sentRev, rev);
   setStatus("Saved", 1200);
 }
 
