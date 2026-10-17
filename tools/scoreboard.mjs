@@ -52,6 +52,35 @@ function run(command, cwd = root) {
 
 // ---------------------------------------------------------------- TypeScript
 
+/**
+ * Per-package test counts out of turbo's streamed logs.
+ *
+ * Turbo labels task output differently depending on the environment, so track
+ * the current package from either marker and attribute the vitest summary line
+ * (`Tests N passed`) that falls under it:
+ *   local : every line is prefixed     `@nucleus/pdf:test: ...`
+ *   CI    : GitHub Actions task groups `::group::@nucleus/pdf:test` .. `::endgroup::`
+ * (turbo emits the group form whenever `GITHUB_ACTIONS` is set.)
+ */
+function measureTestCounts(output) {
+  const counts = new Map();
+  let current = null;
+  const groupMarker = /^(?:##\[group\]|::group::)\s*(@nucleus\/[\w-]+):test\b/;
+  const linePrefix = /^(@nucleus\/[\w-]+):test:/;
+  const summary = /\bTests\s+(\d+) passed\b/;
+  for (const line of output.split("\n")) {
+    const marker = groupMarker.exec(line) ?? linePrefix.exec(line);
+    if (marker) current = marker[1].replace("@nucleus/", "");
+    const hit = summary.exec(line);
+    if (hit && current) {
+      counts.set(current, (counts.get(current) ?? 0) + Number(hit[1]));
+      current = null;
+    }
+  }
+  // turbo runs packages in parallel: sort so the file is identical on every machine.
+  return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
 function measureTs() {
   const verify = run("npm run verify");
   const tasks = /Tasks:\s+(\d+) successful, (\d+) total/.exec(verify);
@@ -60,10 +89,7 @@ function measureTs() {
     process.exit(1);
   }
 
-  const tests = [...verify.matchAll(/(@nucleus\/[\w-]+):test:.*Tests\s+(\d+) passed/gm)]
-    .map((match) => [match[1].replace("@nucleus/", ""), Number(match[2])])
-    // turbo runs packages in parallel: sort so the file is identical on every machine.
-    .sort(([a], [b]) => a.localeCompare(b));
+  const tests = measureTestCounts(verify);
   const testTotal = tests.reduce((sum, [, count]) => sum + count, 0);
   const testDetail = tests.map(([name, count]) => `${name} ${count}`).join(" · ");
 
@@ -215,9 +241,9 @@ function assemble(existing, sections) {
   return out;
 }
 
-function firstDifference(expected, actual) {
-  const a = (actual ?? "").split("\n");
-  const b = expected.split("\n");
+function firstDifference(filed, measured) {
+  const a = (filed ?? "").split("\n");
+  const b = measured.split("\n");
   for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
     if (a[i] !== b[i]) return `  section line ${i + 1}:\n    file:     ${a[i] ?? "(missing)"}\n    measured: ${b[i] ?? "(missing)"}`;
   }
